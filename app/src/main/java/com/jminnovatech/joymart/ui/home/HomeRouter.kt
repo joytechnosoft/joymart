@@ -5,6 +5,8 @@ import androidx.navigation.NavController
 import com.jminnovatech.joymart.core.session.SessionManager
 import com.jminnovatech.joymart.data.model.auth.UserRole
 import com.jminnovatech.joymart.ui.customer.CustomerRoot
+import com.jminnovatech.joymart.ui.distributor.DistributorHome
+import com.jminnovatech.joymart.ui.distributor.DistributorRoot
 
 @Composable
 fun HomeRouter(
@@ -28,10 +30,16 @@ fun HomeRouter(
 
 
         UserRole.DISTRIBUTOR -> {
-            DistributorHome(
-
+            DistributorRoot(
+                onLogout = {
+                    sessionManager.clear()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0)
+                    }
+                }
             )
         }
+
 
         UserRole.COMPANY -> {
             CompanyHome(

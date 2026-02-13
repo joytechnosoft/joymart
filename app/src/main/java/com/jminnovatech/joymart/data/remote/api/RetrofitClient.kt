@@ -11,6 +11,7 @@ object RetrofitClient {
 
     private const val BASE_URL = "https://jminnovatech.xyz/enjoybazar/api/"
 
+
     private lateinit var session: SessionManager
 
     fun init(sessionManager: SessionManager) {
@@ -55,4 +56,9 @@ object RetrofitClient {
     val authApi: AuthApi by lazy {
         retrofit.create(AuthApi::class.java)
     }
+
+    val distributorApi: DistributorApi by lazy {
+        retrofit.create(DistributorApi::class.java)
+    }
+
 }
