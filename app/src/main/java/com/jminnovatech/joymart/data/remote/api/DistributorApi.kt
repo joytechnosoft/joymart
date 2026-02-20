@@ -51,9 +51,10 @@ interface DistributorApi {
         @Part("description") description: RequestBody?,
         @Part("base_price") basePrice: RequestBody,
         @Part("sell_price") sellPrice: RequestBody,
+        @Part("mrp") mrp: RequestBody?,          // ✅ ADD THIS
         @Part("stock_qty") stockQty: RequestBody,
         @Part("unit") unit: RequestBody,
-        @Part image: MultipartBody.Part?
+        @Part image: MultipartBody.Part?         // ✅ IMPORTANT
     ): ApiResponse<DistributorProductResponse>
 
 
@@ -66,9 +67,10 @@ interface DistributorApi {
         @Part("description") description: RequestBody?,
         @Part("base_price") basePrice: RequestBody,
         @Part("sell_price") sellPrice: RequestBody,
+        @Part("mrp") mrp: RequestBody?,          // ✅ ADD THIS
         @Part("stock_qty") stockQty: RequestBody,
         @Part("unit") unit: RequestBody,
-        @Part image: MultipartBody.Part?
+        @Part image: MultipartBody.Part?         // ✅ IMPORTANT
     ): ApiResponse<DistributorProductResponse>
 
 

@@ -15,6 +15,7 @@ runtime = "1.10.0"
 foundation = "1.10.0"
 ui-text = "1.10.0"
 litert-support-api = "1.4.1"
+ui-graphics = "1.10.3"
 
 
 
@@ -54,3 +55,4 @@ androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "ui-text" }
 litert-support-api = { group = "com.google.ai.edge.litert", name = "litert-support-api", version.ref = "litert-support-api" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "ui-graphics" }
