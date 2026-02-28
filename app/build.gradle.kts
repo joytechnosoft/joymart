@@ -73,6 +73,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.litert.support.api)
     implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.compose.foundation.layout)
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.compose.material:material-icons-extended")
 

@@ -4,9 +4,11 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,7 +34,9 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
 import java.io.ByteArrayOutputStream
 import kotlin.math.roundToInt
-
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.border
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DistributorProductScreen() {
@@ -53,7 +57,9 @@ fun DistributorProductScreen() {
     var showForm by remember { mutableStateOf(false) }
     var editProduct by remember { mutableStateOf<DistributorProduct?>(null) }
     var deleteProduct by remember { mutableStateOf<DistributorProduct?>(null) }
-
+// 🔍 FILTER + PAGINATION
+    var currentPage by remember { mutableStateOf(1) }
+    val itemsPerPage = 10
     suspend fun loadData() {
         try {
             val p = api.getProducts()
@@ -80,6 +86,14 @@ fun DistributorProductScreen() {
 
         matchesSearch && matchesUnit && matchesLowStock
     }
+
+    val totalPages = (filteredProducts.size / itemsPerPage) +
+            if (filteredProducts.size % itemsPerPage == 0) 0 else 1
+
+    val paginatedProducts =
+        filteredProducts.drop((currentPage - 1) * itemsPerPage)
+            .take(itemsPerPage)
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
@@ -128,61 +142,192 @@ fun DistributorProductScreen() {
 
                 LazyColumn {
 
-                    items(filteredProducts) { product ->
+                    items(
+                        paginatedProducts,
+                        key = { it.id }
+                    ) { product ->
 
                         Card(
-                            Modifier
+                            modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(10.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            elevation = CardDefaults.cardElevation(6.dp)
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .animateContentSize(),
+                            shape = RoundedCornerShape(20.dp),
+                            elevation = CardDefaults.cardElevation(8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
                         ) {
-                            Row(Modifier.padding(14.dp)) {
 
-                                AsyncImage(
-                                    model = product.image_url,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(85.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                )
+                            Box {
 
-                                Spacer(Modifier.width(14.dp))
-
-                                Column(Modifier.weight(1f)) {
-
-                                    Text(product.title, fontWeight = FontWeight.Bold)
-                                    Text("MRP: ₹${product.mrp}")
-                                    Text("Sell: ₹${product.sell_price}")
-                                    Text("Discount: ${product.discount_percent?.roundToInt()}%")
-
-                                    if (product.stock_qty <= 5) {
+                                // 🔥 Discount Ribbon
+                                if ((product.discount_percent ?: 0.0) > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                Color(0xFF00C853),
+                                                shape = RoundedCornerShape(
+                                                    topStart = 20.dp,
+                                                    bottomEnd = 20.dp
+                                                )
+                                            )
+                                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
                                         Text(
-                                            "Low Stock!",
-                                            color = MaterialTheme.colorScheme.error,
-                                            fontWeight = FontWeight.Bold
+                                            "${product.discount_percent?.roundToInt()}% OFF",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.labelMedium
                                         )
                                     }
-
-                                    Text("Stock: ${product.stock_qty} ${product.unit}")
                                 }
 
-                                Column {
-                                    IconButton(onClick = {
-                                        editProduct = product
-                                        showForm = true
-                                    }) {
-                                        Icon(Icons.Default.Edit, null)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                ) {
+
+                                    // 🖼 Image
+                                    AsyncImage(
+                                        model = product.image_url,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(95.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .border(
+                                                1.dp,
+                                                Color.LightGray,
+                                                RoundedCornerShape(16.dp)
+                                            )
+                                    )
+
+                                    Spacer(Modifier.width(16.dp))
+
+                                    Column(
+                                        Modifier.weight(1f)
+                                    ) {
+
+                                        // 🏷 Title
+                                        Text(
+                                            product.title,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+
+                                        Spacer(Modifier.height(6.dp))
+
+                                        // 💰 Price Row
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+
+                                            Text(
+                                                "₹${product.sell_price}",
+                                                style = MaterialTheme.typography.titleLarge,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF1565C0)
+                                            )
+
+                                            Spacer(Modifier.width(8.dp))
+
+                                            if ((product.mrp ?: 0.0) > (product.sell_price ?: 0.0)) {
+                                                Text(
+                                                    "₹${product.mrp}",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = Color.Gray,
+                                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(Modifier.height(6.dp))
+// 💰 PER PRODUCT PROFIT (per unit only)
+
+                                        val base = product.base_price ?: 0.0
+                                        val sell = product.sell_price ?: 0.0
+                                        val perUnitProfit = sell - base
+
+                                        Spacer(Modifier.height(4.dp))
+
+                                        AssistChip(
+                                            onClick = {},
+                                            label = {
+                                                Text("Profit ₹${"%.0f".format(perUnitProfit)}")
+                                            },
+                                            colors = AssistChipDefaults.assistChipColors(
+                                                containerColor = Color(0xFFE8F5E9),
+                                                labelColor = Color(0xFF2E7D32)
+                                            )
+                                        )
+
+                                        Spacer(Modifier.height(4.dp))
+                                        // 📦 Stock + Unit
+                                        Text(
+                                            "Stock: ${product.stock_qty} ${product.unit}",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+
+                                        // ⚠ Low stock chip
+                                        if (product.stock_qty <= 5) {
+                                            Spacer(Modifier.height(6.dp))
+                                            AssistChip(
+                                                onClick = {},
+                                                label = { Text("Low Stock") },
+                                                colors = AssistChipDefaults.assistChipColors(
+                                                    containerColor = Color(0xFFFFEBEE),
+                                                    labelColor = Color(0xFFD32F2F)
+                                                )
+                                            )
+                                        }
                                     }
 
-                                    IconButton(onClick = {
-                                        deleteProduct = product
-                                    }) {
-                                        Icon(Icons.Default.Delete, null)
+                                    // ✏️ Edit/Delete
+                                    Column {
+
+                                        IconButton(onClick = {
+                                            editProduct = product
+                                            showForm = true
+                                        }) {
+                                            Icon(
+                                                Icons.Default.Edit,
+                                                contentDescription = null,
+                                                tint = Color(0xFF1976D2)
+                                            )
+                                        }
+
+                                        IconButton(onClick = {
+                                            deleteProduct = product
+                                        }) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = null,
+                                                tint = Color(0xFFD32F2F)
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
+                    }
+                }
+                if (totalPages > 1) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+
+                        Button(
+                            onClick = { if (currentPage > 1) currentPage-- },
+                            enabled = currentPage > 1
+                        ) { Text("Prev") }
+
+                        Text("Page $currentPage / $totalPages")
+
+                        Button(
+                            onClick = { if (currentPage < totalPages) currentPage++ },
+                            enabled = currentPage < totalPages
+                        ) { Text("Next") }
                     }
                 }
             }
@@ -235,7 +380,11 @@ fun DistributorProductScreen() {
 
         var uploading by remember { mutableStateOf(false) }
         var imageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+        var selectedCategoryId by remember {
+            mutableStateOf(editProduct?.category_id)
+        }
 
+        var newCategoryName by remember { mutableStateOf("") }
         val discount = remember(mrp, sellPrice) {
             val m = mrp.toDoubleOrNull() ?: 0.0
             val s = sellPrice.toDoubleOrNull() ?: 0.0
@@ -269,7 +418,120 @@ fun DistributorProductScreen() {
                     }
 
                     item { Spacer(Modifier.height(12.dp)) }
+                    item {
 
+                        var categoryExpanded by remember { mutableStateOf(false) }
+
+                        ExposedDropdownMenuBox(
+                            expanded = categoryExpanded,
+                            onExpandedChange = { categoryExpanded = !categoryExpanded }
+                        ) {
+
+                            OutlinedTextField(
+                                value = categories
+                                    .find { it.id == selectedCategoryId }
+                                    ?.name ?: "-- None --",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Category") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(categoryExpanded)
+                                },
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = categoryExpanded,
+                                onDismissRequest = { categoryExpanded = false }
+                            ) {
+
+                                DropdownMenuItem(
+                                    text = { Text("-- None --") },
+                                    onClick = {
+                                        selectedCategoryId = null
+                                        categoryExpanded = false
+                                    }
+                                )
+
+                                categories.forEach { cat ->
+                                    DropdownMenuItem(
+                                        text = { Text(cat.name) },
+                                        onClick = {
+                                            selectedCategoryId = cat.id
+                                            categoryExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    item {
+
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFF5F7FA)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        ) {
+
+                            Column(Modifier.padding(16.dp)) {
+
+                                Text(
+                                    "Add New Category",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF1565C0)
+                                )
+
+                                Spacer(Modifier.height(8.dp))
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+
+                                    OutlinedTextField(
+                                        value = newCategoryName,
+                                        onValueChange = { newCategoryName = it },
+                                        placeholder = { Text("Enter category name") },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+
+                                    ElevatedButton(
+                                        onClick = {
+                                            scope.launch {
+                                                if (newCategoryName.isNotBlank()) {
+
+                                                    val response = api.addCategory(
+                                                        newCategoryName
+                                                            .toRequestBody("text/plain".toMediaTypeOrNull())
+                                                    )
+
+                                                    if (response.success) {
+                                                        loadData()
+                                                        selectedCategoryId = response.data?.id
+                                                        newCategoryName = ""
+                                                        snackbar.showSnackbar("Category Added")
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Icon(Icons.Default.Add, null)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Add")
+                                    }
+                                }
+                            }
+                        }
+                    }
                     item {
                         OutlinedTextField(title, { title = it }, label = { Text("Title") })
                     }
@@ -318,16 +580,17 @@ fun DistributorProductScreen() {
                             expanded = expanded,
                             onExpandedChange = { expanded = !expanded }
                         ) {
-
                             OutlinedTextField(
-                                value = unit,
+                                value = unit,   // ✅ এখানে unit হবে
                                 onValueChange = {},
                                 readOnly = true,
                                 label = { Text("Unit") },
                                 trailingIcon = {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded)
                                 },
-                                modifier = Modifier.menuAnchor()
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
                             )
 
                             ExposedDropdownMenu(
@@ -338,7 +601,7 @@ fun DistributorProductScreen() {
                                     DropdownMenuItem(
                                         text = { Text(it) },
                                         onClick = {
-                                            unit = it
+                                            unit = it    // ✅ এখানে unit set হবে
                                             expanded = false
                                         }
                                     )
@@ -413,7 +676,9 @@ fun DistributorProductScreen() {
                                     if (editProduct == null) {
                                         api.addProduct(
                                             title.toRequestBody("text/plain".toMediaTypeOrNull()),
-                                            null,
+                                            selectedCategoryId
+                                                ?.toString()
+                                                ?.toRequestBody("text/plain".toMediaTypeOrNull()),
                                             description.toRequestBody("text/plain".toMediaTypeOrNull()),
                                             basePrice.toRequestBody("text/plain".toMediaTypeOrNull()),
                                             sellPrice.toRequestBody("text/plain".toMediaTypeOrNull()),
@@ -427,7 +692,9 @@ fun DistributorProductScreen() {
                                         api.updateProduct(
                                             editProduct!!.id,
                                             title.toRequestBody("text/plain".toMediaTypeOrNull()),
-                                            null,
+                                            selectedCategoryId
+                                                ?.toString()
+                                                ?.toRequestBody("text/plain".toMediaTypeOrNull()),
                                             description.toRequestBody("text/plain".toMediaTypeOrNull()),
                                             basePrice.toRequestBody("text/plain".toMediaTypeOrNull()),
                                             sellPrice.toRequestBody("text/plain".toMediaTypeOrNull()),

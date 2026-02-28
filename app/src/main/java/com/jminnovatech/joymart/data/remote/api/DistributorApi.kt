@@ -93,4 +93,10 @@ interface DistributorApi {
 
     @GET("categories")
     suspend fun getCategories(): ApiResponse<List<DistributorCategory>>
+
+    @Multipart
+    @POST("categories")
+    suspend fun addCategory(
+        @Part("name") name: RequestBody
+    ): ApiResponse<DistributorCategory>
 }
