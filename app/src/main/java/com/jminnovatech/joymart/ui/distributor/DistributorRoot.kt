@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -25,7 +26,7 @@ fun DistributorRoot(
     val context = LocalContext.current
     val session = remember { SessionManager(context) }
     val userName = session.getUserName() ?: "Distributor"
-
+    var refreshTrigger by remember { mutableStateOf(0) }
     BackHandler(drawerState.isOpen) {
         scope.launch { drawerState.close() }
     }
@@ -54,12 +55,24 @@ fun DistributorRoot(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Distributor Panel") },
+                    title = { Text("Distributor Products") },
                     navigationIcon = {
                         IconButton(
                             onClick = { scope.launch { drawerState.open() } }
                         ) {
-                            Icon(Icons.Default.Menu, null)
+                            Icon(Icons.Default.Menu, contentDescription = null)
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                refreshTrigger++   // 🔥 trigger reload
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "Refresh"
+                            )
                         }
                     }
                 )

@@ -99,4 +99,19 @@ interface DistributorApi {
     suspend fun addCategory(
         @Part("name") name: RequestBody
     ): ApiResponse<DistributorCategory>
+
+
+    @GET("products/export/pdf")
+    @Streaming
+    suspend fun exportProductsPdf(): okhttp3.ResponseBody
+
+    @GET("products/barcodes/export/pdf")
+    @Streaming
+    suspend fun exportBarcodePdf(): okhttp3.ResponseBody
+
+    @GET("products/{id}/barcode")
+    @Streaming
+    suspend fun exportSingleBarcode(
+        @Path("id") id: Int
+    ): okhttp3.ResponseBody
 }

@@ -1,7 +1,10 @@
 package com.jminnovatech.joymart.ui.distributor
 
+import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
@@ -37,6 +40,11 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.core.content.FileProvider
+import java.io.File
+import java.io.FileOutputStream
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DistributorProductScreen() {
@@ -45,7 +53,8 @@ fun DistributorProductScreen() {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
-
+    var downloading by remember { mutableStateOf(false) }
+    var downloadMessage by remember { mutableStateOf("") }
     var products by remember { mutableStateOf<List<DistributorProduct>>(emptyList()) }
     var categories by remember { mutableStateOf<List<DistributorCategory>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
@@ -53,13 +62,14 @@ fun DistributorProductScreen() {
     var showLowStockOnly by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var refreshing by remember { mutableStateOf(false) }
-
+    var selectedCategoryFilter by remember { mutableStateOf<Int?>(null) }
     var showForm by remember { mutableStateOf(false) }
     var editProduct by remember { mutableStateOf<DistributorProduct?>(null) }
     var deleteProduct by remember { mutableStateOf<DistributorProduct?>(null) }
 // 🔍 FILTER + PAGINATION
     var currentPage by remember { mutableStateOf(1) }
     val itemsPerPage = 10
+    var showNewCategory by remember { mutableStateOf(false) }
     suspend fun loadData() {
         try {
             val p = api.getProducts()
@@ -84,7 +94,11 @@ fun DistributorProductScreen() {
         val matchesLowStock =
             !showLowStockOnly || product.stock_qty <= 5
 
-        matchesSearch && matchesUnit && matchesLowStock
+        val matchesCategory =
+            selectedCategoryFilter == null ||
+                    product.category_id == selectedCategoryFilter
+
+        matchesSearch && matchesUnit && matchesLowStock && matchesCategory
     }
 
     val totalPages = (filteredProducts.size / itemsPerPage) +
@@ -112,34 +126,196 @@ fun DistributorProductScreen() {
             }
         ) {
 
-            Column(Modifier.padding(padding)) {
-
-                // 🔍 SEARCH BAR
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
+            Column(
+                Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFFF8FAFF),
+                                Color(0xFFEAF2FF)
+                            )
+                        )
+                    )
+            ) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
-                    placeholder = { Text("Search product...") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(30.dp)
-                )
-
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
                 ) {
-                    FilterChip(
-                        selected = showLowStockOnly,
-                        onClick = { showLowStockOnly = !showLowStockOnly },
-                        label = { Text("Low Stock") }
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                refreshing = true
+                                loadData()
+                                snackbar.showSnackbar("Updated")
+                            }
+                        },
+                        modifier = Modifier
+                            .size(36.dp) // 👈 small size
+                            .align(Alignment.CenterEnd)
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = Color(0xFF1565C0)
+                        )
+                    }
+                }
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFFFFF)
+                    ),
+                    elevation = CardDefaults.cardElevation(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2962FF),
+                                contentColor = Color.White
+                            ),
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        downloading = true
+                                        downloadMessage = "Preparing Products PDF..."
+
+                                        val body = api.exportProductsPdf()
+                                        val file = savePdfFile(context, body, "products.pdf")
+
+                                        downloading = false
+                                        openPdf(context, file)
+
+                                    } catch (e: Exception) {
+                                        downloading = false
+                                        snackbar.showSnackbar("Download Failed")
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.PictureAsPdf, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Products")
+                        }
+
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2E7D32),
+                                contentColor = Color.White
+                            ),
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        downloading = true
+                                        downloadMessage = "Preparing Barcode PDF..."
+
+                                        val body = api.exportBarcodePdf()
+                                        val file = savePdfFile(context, body, "barcodes.pdf")
+
+                                        downloading = false
+                                        openPdf(context, file)
+
+                                    } catch (e: Exception) {
+                                        downloading = false
+                                        snackbar.showSnackbar("Download Failed")
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.QrCode, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Barcodes")
+                        }
+                    }
+                }
+                // 🔍 SEARCH BAR
+                Card(
+                    shape = RoundedCornerShape(50),
+                    elevation = CardDefaults.cardElevation(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Search product...") },
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent
+                        )
                     )
                 }
 
+
+
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = showLowStockOnly,
+                            onClick = { showLowStockOnly = !showLowStockOnly },
+                            label = { Text("Low Stock") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFFFFC107), // Yellow when selected
+                                selectedLabelColor = Color.Black
+                            )
+                        )
+                    }
+                    // All Button
+                    item {
+                        FilterChip(
+                            selected = selectedCategoryFilter == null,
+                            onClick = { selectedCategoryFilter = null },
+                            label = { Text("All") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF1565C0),
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+
+                    // Dynamic Category Buttons
+                    items(categories) { category ->
+
+                        val isSelected = selectedCategoryFilter == category.id
+
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                selectedCategoryFilter =
+                                    if (isSelected) null else category.id
+                            },
+                            label = { Text(category.name) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFF1565C0),
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                }
                 LazyColumn {
 
                     items(
@@ -150,74 +326,51 @@ fun DistributorProductScreen() {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
                                 .animateContentSize(),
-                            shape = RoundedCornerShape(20.dp),
-                            elevation = CardDefaults.cardElevation(8.dp),
+                            shape = RoundedCornerShape(26.dp),
+                            elevation = CardDefaults.cardElevation(12.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
+                                containerColor = Color.White
                             )
                         ) {
 
-                            Box {
+                            Box(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
 
-                                // 🔥 Discount Ribbon
-                                if ((product.discount_percent ?: 0.0) > 0) {
-                                    Box(
-                                        modifier = Modifier
-                                            .background(
-                                                Color(0xFF00C853),
-                                                shape = RoundedCornerShape(
-                                                    topStart = 20.dp,
-                                                    bottomEnd = 20.dp
-                                                )
-                                            )
-                                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                                    ) {
-                                        Text(
-                                            "${product.discount_percent?.roundToInt()}% OFF",
-                                            color = Color.White,
-                                            style = MaterialTheme.typography.labelMedium
-                                        )
-                                    }
-                                }
+                                // ================= MAIN CONTENT =================
 
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp)
+                                        .padding(20.dp)
                                 ) {
 
-                                    // 🖼 Image
                                     AsyncImage(
                                         model = product.image_url,
                                         contentDescription = null,
                                         modifier = Modifier
-                                            .size(95.dp)
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .border(
-                                                1.dp,
-                                                Color.LightGray,
-                                                RoundedCornerShape(16.dp)
-                                            )
+                                            .size(100.dp)
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .background(Color(0xFFF4F6FA))
                                     )
 
-                                    Spacer(Modifier.width(16.dp))
+                                    Spacer(Modifier.width(18.dp))
 
                                     Column(
-                                        Modifier.weight(1f)
+                                        modifier = Modifier.weight(1f)
                                     ) {
 
-                                        // 🏷 Title
                                         Text(
                                             product.title,
                                             style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF0D47A1)
                                         )
 
-                                        Spacer(Modifier.height(6.dp))
+                                        Spacer(Modifier.height(8.dp))
 
-                                        // 💰 Price Row
                                         Row(verticalAlignment = Alignment.CenterVertically) {
 
                                             Text(
@@ -239,34 +392,39 @@ fun DistributorProductScreen() {
                                             }
                                         }
 
-                                        Spacer(Modifier.height(6.dp))
-// 💰 PER PRODUCT PROFIT (per unit only)
+                                        Spacer(Modifier.height(10.dp))
 
+                                        // ===== PROFIT (UNCHANGED LOGIC) =====
                                         val base = product.base_price ?: 0.0
                                         val sell = product.sell_price ?: 0.0
                                         val perUnitProfit = sell - base
 
-                                        Spacer(Modifier.height(4.dp))
-
-                                        AssistChip(
-                                            onClick = {},
-                                            label = {
-                                                Text("Profit ₹${"%.0f".format(perUnitProfit)}")
-                                            },
-                                            colors = AssistChipDefaults.assistChipColors(
-                                                containerColor = Color(0xFFE8F5E9),
-                                                labelColor = Color(0xFF2E7D32)
+                                        Card(
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = Color(0xFFE8F5E9)
                                             )
-                                        )
+                                        ) {
+                                            Text(
+                                                "Profit ₹${"%.0f".format(perUnitProfit)}",
+                                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                                color = Color(0xFF2E7D32),
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
 
-                                        Spacer(Modifier.height(4.dp))
-                                        // 📦 Stock + Unit
+                                        Spacer(Modifier.height(10.dp))
+
                                         Text(
                                             "Stock: ${product.stock_qty} ${product.unit}",
-                                            style = MaterialTheme.typography.bodyMedium
+                                            fontWeight = FontWeight.Medium,
+                                            color = when {
+                                                product.stock_qty > 10 -> Color(0xFF2E7D32)
+                                                product.stock_qty > 5 -> Color(0xFFF57C00)
+                                                else -> Color(0xFFD32F2F)
+                                            }
                                         )
 
-                                        // ⚠ Low stock chip
                                         if (product.stock_qty <= 5) {
                                             Spacer(Modifier.height(6.dp))
                                             AssistChip(
@@ -280,7 +438,6 @@ fun DistributorProductScreen() {
                                         }
                                     }
 
-                                    // ✏️ Edit/Delete
                                     Column {
 
                                         IconButton(onClick = {
@@ -290,7 +447,7 @@ fun DistributorProductScreen() {
                                             Icon(
                                                 Icons.Default.Edit,
                                                 contentDescription = null,
-                                                tint = Color(0xFF1976D2)
+                                                tint = Color(0xFF1565C0)
                                             )
                                         }
 
@@ -303,6 +460,32 @@ fun DistributorProductScreen() {
                                                 tint = Color(0xFFD32F2F)
                                             )
                                         }
+                                    }
+                                }
+
+                                // ================= DISCOUNT BADGE (TRUE OVERLAY FIX) =================
+
+                                if ((product.discount_percent ?: 0.0) > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart)
+                                            .offset(x = 8.dp, y = 8.dp)
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    listOf(Color(0xFF00C853), Color(0xFF2E7D32))
+                                                ),
+                                                shape = RoundedCornerShape(
+                                                    topStart = 26.dp,
+                                                    bottomEnd = 18.dp
+                                                )
+                                            )
+                                    ) {
+                                        Text(
+                                            "${product.discount_percent?.roundToInt()}% OFF",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                        )
                                     }
                                 }
                             }
@@ -383,7 +566,7 @@ fun DistributorProductScreen() {
         var selectedCategoryId by remember {
             mutableStateOf(editProduct?.category_id)
         }
-
+        var showCategoryModal by remember { mutableStateOf(false) }
         var newCategoryName by remember { mutableStateOf("") }
         val discount = remember(mrp, sellPrice) {
             val m = mrp.toDoubleOrNull() ?: 0.0
@@ -406,9 +589,32 @@ fun DistributorProductScreen() {
 
         Dialog(onDismissRequest = { if (!uploading) showForm = false }) {
 
-            Surface(shape = RoundedCornerShape(20.dp)) {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                tonalElevation = 8.dp,
+                shadowElevation = 12.dp,
+                color = Color.White
+            ) {
 
-                LazyColumn(Modifier.padding(20.dp)) {
+                Box {
+
+                    // 🔴 Close Button (Top Right)
+                    IconButton(
+                        onClick = { if (!uploading) showForm = false },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = null)
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .padding(top = 36.dp)   // close button space
+                            .padding(20.dp)
+                    ) {
+
+                        // 👉 তোমার সব item { } এখানেই থাকবে
 
                     item {
                         Text(
@@ -422,116 +628,67 @@ fun DistributorProductScreen() {
 
                         var categoryExpanded by remember { mutableStateOf(false) }
 
-                        ExposedDropdownMenuBox(
-                            expanded = categoryExpanded,
-                            onExpandedChange = { categoryExpanded = !categoryExpanded }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
 
-                            OutlinedTextField(
-                                value = categories
-                                    .find { it.id == selectedCategoryId }
-                                    ?.name ?: "-- None --",
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Category") },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(categoryExpanded)
-                                },
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .fillMaxWidth()
-                            )
-
-                            ExposedDropdownMenu(
+                            ExposedDropdownMenuBox(
                                 expanded = categoryExpanded,
-                                onDismissRequest = { categoryExpanded = false }
+                                onExpandedChange = { categoryExpanded = !categoryExpanded },
+                                modifier = Modifier.weight(1f)
                             ) {
 
-                                DropdownMenuItem(
-                                    text = { Text("-- None --") },
-                                    onClick = {
-                                        selectedCategoryId = null
-                                        categoryExpanded = false
-                                    }
+                                OutlinedTextField(
+                                    value = categories
+                                        .find { it.id == selectedCategoryId }
+                                        ?.name ?: "-- None --",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Category") },
+                                    trailingIcon = {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(categoryExpanded)
+                                    },
+                                    modifier = Modifier
+                                        .menuAnchor()
+                                        .fillMaxWidth()
                                 )
 
-                                categories.forEach { cat ->
+                                ExposedDropdownMenu(
+                                    expanded = categoryExpanded,
+                                    onDismissRequest = { categoryExpanded = false }
+                                ) {
+
                                     DropdownMenuItem(
-                                        text = { Text(cat.name) },
+                                        text = { Text("-- Select --") },
                                         onClick = {
-                                            selectedCategoryId = cat.id
+                                            selectedCategoryId = null
                                             categoryExpanded = false
                                         }
                                     )
-                                }
-                            }
-                        }
-                    }
-                    item {
 
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFFF5F7FA)
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp)
-                        ) {
-
-                            Column(Modifier.padding(16.dp)) {
-
-                                Text(
-                                    "Add New Category",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF1565C0)
-                                )
-
-                                Spacer(Modifier.height(8.dp))
-
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-
-                                    OutlinedTextField(
-                                        value = newCategoryName,
-                                        onValueChange = { newCategoryName = it },
-                                        placeholder = { Text("Enter category name") },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-
-                                    ElevatedButton(
-                                        onClick = {
-                                            scope.launch {
-                                                if (newCategoryName.isNotBlank()) {
-
-                                                    val response = api.addCategory(
-                                                        newCategoryName
-                                                            .toRequestBody("text/plain".toMediaTypeOrNull())
-                                                    )
-
-                                                    if (response.success) {
-                                                        loadData()
-                                                        selectedCategoryId = response.data?.id
-                                                        newCategoryName = ""
-                                                        snackbar.showSnackbar("Category Added")
-                                                    }
-                                                }
+                                    categories.forEach { cat ->
+                                        DropdownMenuItem(
+                                            text = { Text(cat.name) },
+                                            onClick = {
+                                                selectedCategoryId = cat.id
+                                                categoryExpanded = false
                                             }
-                                        },
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Icon(Icons.Default.Add, null)
-                                        Spacer(Modifier.width(4.dp))
-                                        Text("Add")
+                                        )
                                     }
                                 }
                             }
+
+                            Spacer(Modifier.width(8.dp))
+                            TextButton(
+                                onClick = { showCategoryModal = true }
+                            ) {
+                                Text("+ New")
+                            }
                         }
                     }
+
+
+
                     item {
                         OutlinedTextField(title, { title = it }, label = { Text("Title") })
                     }
@@ -721,5 +878,167 @@ fun DistributorProductScreen() {
                 }
             }
         }
+    }
+        if (showCategoryModal) {
+
+            var newCategoryName by remember { mutableStateOf("") }
+            var saving by remember { mutableStateOf(false) }
+
+            Dialog(onDismissRequest = { if (!saving) showCategoryModal = false }) {
+
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    tonalElevation = 8.dp,
+                    shadowElevation = 12.dp,
+                    color = Color.White
+                ) {
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
+
+                        // 🔹 Header
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+
+                            Text(
+                                "Add Category",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            IconButton(
+                                onClick = {
+                                    if (!saving) showCategoryModal = false
+                                }
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null)
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = newCategoryName,
+                            onValueChange = { newCategoryName = it },
+                            label = { Text("Category Name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(Modifier.height(20.dp))
+
+                        Button(
+                            onClick = {
+                                scope.launch {
+
+                                    if (newCategoryName.isNotBlank()) {
+
+                                        saving = true
+
+                                        val response = api.addCategory(
+                                            newCategoryName.toRequestBody(
+                                                "text/plain".toMediaTypeOrNull()
+                                            )
+                                        )
+
+                                        if (response.success) {
+
+                                            // 🔥 refresh categories
+                                            val c = api.getCategories()
+                                            if (c.success) {
+                                                categories = c.data ?: emptyList()
+                                            }
+
+                                            selectedCategoryId = response.data?.id
+
+                                            showCategoryModal = false
+                                            snackbar.showSnackbar("Category Added")
+                                        }
+
+                                        saving = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (saving) "Saving..." else "Save")
+                        }
+                    }
+                }
+            }
+        }
+
+}
+    if (downloading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        downloadMessage,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+
+}
+
+
+
+private fun savePdfFile(
+    context: Context,
+    body: ResponseBody,
+    fileName: String
+): File {
+
+    val file = File(context.getExternalFilesDir(null), fileName)
+
+    body.byteStream().use { input ->
+        FileOutputStream(file).use { output ->
+            input.copyTo(output)
+        }
+    }
+
+    return file
+}
+private fun openPdf(context: Context, file: File) {
+
+    val uri = FileProvider.getUriForFile(
+        context,
+        context.packageName + ".provider",
+        file
+    )
+
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "application/pdf")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(context, "No PDF viewer installed", Toast.LENGTH_LONG).show()
     }
 }

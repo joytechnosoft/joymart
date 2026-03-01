@@ -54,7 +54,7 @@ fun DistributorHomeScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Distributor Panel") },
+                    title = { Text("Distributor Products") },
                     navigationIcon = {
                         IconButton(
                             onClick = { scope.launch { drawerState.open() } }
