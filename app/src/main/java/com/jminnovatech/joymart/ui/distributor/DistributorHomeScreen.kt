@@ -25,7 +25,7 @@ fun DistributorHomeScreen(
     val context = LocalContext.current
     val session = remember { SessionManager(context) }
     val userName = session.getUserName() ?: "Distributor"
-
+    var refreshTrigger by remember { mutableStateOf(0) }
     BackHandler(drawerState.isOpen) {
         scope.launch { drawerState.close() }
     }
@@ -73,7 +73,7 @@ fun DistributorHomeScreen(
             ) {
 
                 composable("products") {
-                    DistributorProductScreen()
+                    DistributorProductScreen(refreshTrigger)
                 }
 
                 composable("orders") {

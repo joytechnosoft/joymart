@@ -47,7 +47,7 @@ import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DistributorProductScreen() {
+fun DistributorProductScreen(refreshTrigger: Int) {
 
     val api = RetrofitClient.distributorApi
     val scope = rememberCoroutineScope()
@@ -139,34 +139,11 @@ fun DistributorProductScreen() {
                         )
                     )
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    IconButton(
-                        onClick = {
-                            scope.launch {
-                                refreshing = true
-                                loadData()
-                                snackbar.showSnackbar("Updated")
-                            }
-                        },
-                        modifier = Modifier
-                            .size(36.dp) // 👈 small size
-                            .align(Alignment.CenterEnd)
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = "Refresh",
-                            tint = Color(0xFF1565C0)
-                        )
-                    }
-                }
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 5.dp, vertical = 2.dp),
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = Color(0xFFFFFFFF)
@@ -176,7 +153,7 @@ fun DistributorProductScreen() {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(5.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
 
@@ -207,7 +184,7 @@ fun DistributorProductScreen() {
                         ) {
                             Icon(Icons.Default.PictureAsPdf, null)
                             Spacer(Modifier.width(6.dp))
-                            Text("Products")
+                            Text("")
                         }
 
                         Button(
@@ -237,8 +214,29 @@ fun DistributorProductScreen() {
                         ) {
                             Icon(Icons.Default.QrCode, null)
                             Spacer(Modifier.width(6.dp))
-                            Text("Barcodes")
+                            Text("")
                         }
+
+
+                            IconButton(
+                                onClick = {
+                                    scope.launch {
+                                        refreshing = true
+                                        loadData()
+                                        snackbar.showSnackbar("Updated")
+                                    }
+                                },
+                                modifier = Modifier
+                                    .size(36.dp) // 👈 small size
+
+                            ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = "Refresh",
+                                    tint = Color(0xFF1565C0)
+                                )
+                            }
+
                     }
                 }
                 // 🔍 SEARCH BAR
