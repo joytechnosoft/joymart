@@ -98,16 +98,12 @@
 
                                             NavHost(
                                                 navController = navController,
-                                                startDestination = "home",
+                                                startDestination = "dashboard",
                                                 modifier = Modifier.padding(padding)
                                             ) {
 
-                                                composable("home") {
-                                                    DistributorDashboardScreen(
-                                                        onGoProducts = {
-                                                            navController.navigate("products")
-                                                        }
-                                                    )
+                                                composable("dashboard") {
+                                                    DistributorDashboardScreen()
                                                 }
 
                                                 composable("products") {

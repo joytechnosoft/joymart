@@ -11,7 +11,12 @@ interface DistributorApi {
     // =========================
     // ORDERS
     // =========================
+// =========================
+// DASHBOARD
+// =========================
 
+    @GET("admin/summary")
+    suspend fun getDashboardSummary(): ApiResponse<DashboardSummary>
     @GET("distributor/orders")
     suspend fun getOrders(): ApiResponse<List<DistributorOrder>>
 

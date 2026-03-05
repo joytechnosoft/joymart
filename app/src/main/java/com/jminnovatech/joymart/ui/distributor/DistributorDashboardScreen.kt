@@ -1,103 +1,163 @@
 package com.jminnovatech.joymart.ui.distributor
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.jminnovatech.joymart.data.model.distributor.DashboardSummary
 import com.jminnovatech.joymart.data.remote.api.RetrofitClient
 
 @Composable
-fun DistributorDashboardScreen(
-    onGoProducts: () -> Unit
-) {
+fun DistributorDashboardScreen() {
 
     val api = RetrofitClient.distributorApi
-    val scope = rememberCoroutineScope()
 
-    var productCount by remember { mutableStateOf(0) }
+    var dashboard by remember { mutableStateOf<DashboardSummary?>(null) }
     var loading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
+
         try {
-            val res = api.getProducts()
+
+            val res = api.getDashboardSummary()
+
             if (res.success) {
-                productCount = res.data?.data?.size ?: 0
+                dashboard = res.data
             }
-        } catch (_: Exception) {}
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         loading = false
     }
 
-    if (loading) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFF6F9FF), Color(0xFFE8F0FF))
+                )
+            )
     ) {
 
-        Text(
-            "Dashboard",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
+        if (loading) {
 
-        Spacer(Modifier.height(20.dp))
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center)
+            )
 
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            ),
-            elevation = CardDefaults.cardElevation(6.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                Modifier.padding(20.dp)
+        } else {
+
+            LazyColumn(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("Total Products")
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    productCount.toString(),
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
-                )
+
+                item {
+
+                    Text(
+                        "Distributor Dashboard",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                item {
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        DashboardCard(
+                            "Products",
+                            dashboard?.total_products.toString(),
+                            Icons.Default.Inventory
+                        )
+
+                        DashboardCard(
+                            "Orders",
+                            dashboard?.total_orders.toString(),
+                            Icons.Default.ShoppingCart
+                        )
+                    }
+                }
+
+                item {
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        DashboardCard(
+                            "Sales",
+                            "₹${dashboard?.total_sales}",
+                            Icons.Default.AttachMoney
+                        )
+
+                        DashboardCard(
+                            "Profit",
+                            "₹${dashboard?.total_profit}",
+                            Icons.Default.TrendingUp
+                        )
+                    }
+                }
+
+                item {
+
+                    DashboardCard(
+                        "Low Stock",
+                        dashboard?.low_stock.toString(),
+                        Icons.Default.Warning
+                    )
+                }
             }
         }
+    }
+}
 
-        Spacer(Modifier.height(24.dp))
+@Composable
+fun DashboardCard(
+    title: String,
+    value: String,
+    icon: ImageVector
+) {
 
-        Button(
-            onClick = onGoProducts,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
+    Card(
+        modifier = Modifier
+
+            .height(120.dp),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(6.dp)
+    ) {
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Manage Products")
+
+            Icon(icon, null)
+
+            Text(
+                value,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(title, color = Color.Gray)
         }
     }
 }
