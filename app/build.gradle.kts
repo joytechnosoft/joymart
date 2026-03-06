@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.runtime)
     implementation(libs.ui)
+    implementation(libs.androidx.compose.animation.core)
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.compose.material:material-icons-extended")
 
@@ -113,6 +114,7 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     implementation("com.google.accompanist:accompanist-swiperefresh:0.34.0")
 
-
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
 }

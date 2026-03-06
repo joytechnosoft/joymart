@@ -15,8 +15,7 @@ interface DistributorApi {
 // DASHBOARD
 // =========================
 
-    @GET("admin/summary")
-    suspend fun getDashboardSummary(): ApiResponse<DashboardSummary>
+
     @GET("distributor/orders")
     suspend fun getOrders(): ApiResponse<List<DistributorOrder>>
 
@@ -119,4 +118,22 @@ interface DistributorApi {
     suspend fun exportSingleBarcode(
         @Path("id") id: Int
     ): okhttp3.ResponseBody
+    @GET("admin/summary")
+    suspend fun getDashboardSummary(): DashboardSummary
+
+    @GET("admin/sales-chart")
+    suspend fun getSalesChart(): ApiResponse<List<SalesChartItem>>
+
+
+    @GET("admin/low-stock")
+    suspend fun getLowStock(): ApiResponse<List<LowStockProduct>>
+
+
+
+    @GET("admin/recent-orders")
+    suspend fun getRecentOrders(): ApiResponse<List<RecentOrder>>
+
+    @GET("admin/profit-analytics")
+    suspend fun getProfitAnalytics(): ApiResponse<List<ProfitItem>>
+
 }
