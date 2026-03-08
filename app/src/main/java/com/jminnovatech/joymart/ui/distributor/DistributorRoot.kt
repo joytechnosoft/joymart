@@ -70,7 +70,7 @@
                                         Scaffold(
                                             topBar = {
                                                 TopAppBar(
-                                                    title = { Text("Distributor Products") },
+                                                    title = { Text("Distributor") },
                                                     navigationIcon = {
                                                         IconButton(
                                                             onClick = { scope.launch { drawerState.open() } }
