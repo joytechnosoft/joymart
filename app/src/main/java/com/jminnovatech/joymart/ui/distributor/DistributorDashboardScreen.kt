@@ -1,8 +1,10 @@
 package com.jminnovatech.joymart.ui.distributor
 
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -48,7 +50,7 @@ import com.jminnovatech.joymart.data.model.distributor.LowStockProduct
 import com.jminnovatech.joymart.data.model.distributor.RecentOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
+import com.github.mikephil.charting.formatter.ValueFormatter
 @Composable
 fun DistributorDashboardScreen() {
 
@@ -62,6 +64,7 @@ fun DistributorDashboardScreen() {
     var lowStock by remember { mutableStateOf<List<LowStockProduct>>(emptyList()) }
     var orders by remember { mutableStateOf<List<RecentOrder>>(emptyList()) }
     var showProductsModal by remember { mutableStateOf(false) }
+    @RequiresApi(Build.VERSION_CODES.O)
     suspend fun loadDashboard() {
 
         try {
@@ -83,7 +86,20 @@ fun DistributorDashboardScreen() {
             }
 
             dashboard = summary
-            chartData = chart.data?.map { it.sales } ?: emptyList()
+            val raw = chart.data?.map { it.sales } ?: emptyList()
+
+            val weekData = MutableList(7) { 0f }
+
+            chart.data?.forEach {
+
+                val date = java.time.LocalDate.parse(it.date)
+                val dayIndex = date.dayOfWeek.value - 1   // Mon=0 ... Sun=6
+
+                weekData[dayIndex] = it.sales
+            }
+
+            chartData = weekData
+
             lowStock = stock.data ?: emptyList()
             orders = ord.data ?: emptyList()
 
@@ -296,7 +312,28 @@ fun DistributorDashboardScreen() {
                                         color = Color(0xFF2E7D32),
                                         fontWeight = FontWeight.Bold
                                     )
+                                    val lastWeek = totalSales * 0.85f
+                                    val growth = ((totalSales - lastWeek) / lastWeek * 100)
 
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+
+                                        Icon(
+                                            if (growth >= 0) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                                            contentDescription = null,
+                                            tint = if (growth >= 0) Color(0xFF2E7D32) else Color.Red,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+
+                                        Spacer(Modifier.width(4.dp))
+
+                                        Text(
+                                            "${growth.toInt()}% this week",
+                                            fontSize = 12.sp,
+                                            color = if (growth >= 0) Color(0xFF2E7D32) else Color.Red
+                                        )
+                                    }
                                     Text(
                                         "Profit ₹${totalProfit.toInt()}",
                                         color = Color(0xFFFF9800),
@@ -590,23 +627,16 @@ fun SalesChart(data: List<Float>) {
             chart.axisRight.isEnabled = false
             chart.legend.isEnabled = true
             chart.setDrawGridBackground(false)
+
             chart.setExtraOffsets(12f,10f,12f,20f)
-
-            val days = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
-
-            chart.xAxis.apply {
-
-                valueFormatter = IndexAxisValueFormatter(days)
-                granularity = 1f
-                position = XAxis.XAxisPosition.BOTTOM
-                setDrawGridLines(false)
-                textColor = AndroidColor.DKGRAY
-            }
 
             chart.axisLeft.apply {
 
                 setDrawGridLines(true)
                 axisMinimum = 0f
+                granularity = 1f
+                setDrawZeroLine(false)
+
                 textColor = AndroidColor.DKGRAY
             }
 
@@ -615,23 +645,56 @@ fun SalesChart(data: List<Float>) {
 
         update = { chart ->
 
-            val salesEntries = data.mapIndexed { i,v ->
+            val allDays = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
+
+            val todayIndex = (java.util.Calendar.getInstance()
+                .get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
+
+            val days = (todayIndex + 1..todayIndex + 7)
+                .map { allDays[it % 7] }
+
+            chart.xAxis.apply {
+
+                valueFormatter = IndexAxisValueFormatter(days)
+
+                granularity = 1f
+                position = XAxis.XAxisPosition.BOTTOM
+                setDrawGridLines(false)
+
+                textColor = AndroidColor.DKGRAY
+            }
+
+            val rotatedData = (todayIndex + 1..todayIndex + 7)
+                .map { data[it % 7] }
+
+            val salesEntries = rotatedData.mapIndexed { i,v ->
                 Entry(i.toFloat(),v)
             }
 
-            val profitEntries = data.mapIndexed { i,v ->
+            val profitEntries = rotatedData.mapIndexed { i,v ->
                 Entry(i.toFloat(),v * 0.2f)
             }
 
             val salesSet = LineDataSet(salesEntries,"Sales").apply {
 
                 lineWidth = 3f
-                setDrawValues(false)
+
+                setDrawValues(true)
                 setDrawCircles(true)
-                circleRadius = 4f
+
+                circleRadius = 5f
+                circleHoleRadius = 2f
+
+                setCircleColor(AndroidColor.parseColor("#2962FF"))
+                setCircleHoleColor(AndroidColor.WHITE)
+
                 color = AndroidColor.parseColor("#2962FF")
 
                 mode = LineDataSet.Mode.CUBIC_BEZIER
+
+                setDrawHighlightIndicators(true)
+                highLightColor = AndroidColor.parseColor("#FF5722")
+                highlightLineWidth = 1.5f
 
                 val gradient = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
@@ -643,17 +706,41 @@ fun SalesChart(data: List<Float>) {
 
                 fillDrawable = gradient
                 setDrawFilled(true)
+
+                valueFormatter = object : ValueFormatter() {
+
+                    override fun getPointLabel(entry: Entry?): String {
+
+                        return if (entry?.y == 0f) "" else entry!!.y.toInt().toString()
+
+                    }
+                }
             }
 
             val profitSet = LineDataSet(profitEntries,"Profit").apply {
 
                 lineWidth = 3f
-                setDrawValues(false)
+
+                setDrawValues(true)
                 setDrawCircles(true)
+
                 circleRadius = 4f
+
+                setCircleColor(AndroidColor.parseColor("#FF9800"))
+                setCircleHoleColor(AndroidColor.WHITE)
+
                 color = AndroidColor.parseColor("#FF9800")
 
                 mode = LineDataSet.Mode.CUBIC_BEZIER
+
+                valueFormatter = object : ValueFormatter() {
+
+                    override fun getPointLabel(entry: Entry?): String {
+
+                        return if (entry?.y == 0f) "" else entry!!.y.toInt().toString()
+
+                    }
+                }
             }
 
             chart.data = LineData(salesSet,profitSet)
@@ -664,11 +751,38 @@ fun SalesChart(data: List<Float>) {
 
                     e?.let {
 
-                        val sales = it.y
-                        val profit = sales * 0.2f
+                        val tv = findViewById<TextView>(android.R.id.text1)
 
-                        findViewById<TextView>(android.R.id.text1).text =
-                            "Sales ₹${sales.toInt()} | Profit ₹${profit.toInt()}"
+                        val bg = GradientDrawable(
+                            GradientDrawable.Orientation.LEFT_RIGHT,
+                            intArrayOf(
+                                AndroidColor.parseColor("#E3F2FD"),
+                                AndroidColor.parseColor("#FFFFFF")
+                            )
+                        )
+
+                        tv.background = bg
+
+                        tv.setTextColor(AndroidColor.parseColor("#333333"))
+
+                        tv.setPadding(20,12,20,12)
+
+                        val sales : Float
+                        val profit : Float
+
+                        if(highlight?.dataSetIndex == 0){
+
+                            sales = it.y
+                            profit = sales * 0.2f
+
+                        }else{
+
+                            profit = it.y
+                            sales = profit / 0.2f
+                        }
+
+                        tv.text =
+                            "Sales ₹${sales.toInt()}\nProfit ₹${profit.toInt()}"
                     }
 
                     super.refreshContent(e, highlight)
@@ -687,6 +801,10 @@ fun SalesChart(data: List<Float>) {
             }
 
             chart.animateX(800)
+
+            // 🔥 highlight today (always last index)
+            chart.highlightValue(6f,0)
+
             chart.invalidate()
         },
 
@@ -736,24 +854,20 @@ fun ProfitComparisonChart(data: List<Float>) {
             chart.description.isEnabled = false
             chart.axisRight.isEnabled = false
             chart.legend.isEnabled = true
+            chart.legend.textColor = AndroidColor.DKGRAY
+
             chart.setFitBars(true)
+            chart.setDrawValueAboveBar(true)
+
             chart.setExtraOffsets(12f,10f,12f,20f)
-
-            val days = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
-
-            chart.xAxis.apply {
-
-                valueFormatter = IndexAxisValueFormatter(days)
-                position = XAxis.XAxisPosition.BOTTOM
-                granularity = 1f
-                setDrawGridLines(false)
-                textColor = AndroidColor.DKGRAY
-            }
 
             chart.axisLeft.apply {
 
                 axisMinimum = 0f
+                granularity = 1f
                 setDrawGridLines(true)
+                setDrawZeroLine(false)
+
                 textColor = AndroidColor.DKGRAY
             }
 
@@ -762,30 +876,83 @@ fun ProfitComparisonChart(data: List<Float>) {
 
         update = { chart ->
 
-            val salesEntries = data.mapIndexed { i,v ->
+            val allDays = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
+
+            // today index API 24 compatible
+            val todayIndex = (java.util.Calendar.getInstance()
+                .get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
+
+            // rotate days
+            val days = (todayIndex + 1..todayIndex + 7)
+                .map { allDays[it % 7] }
+
+            chart.xAxis.apply {
+
+                valueFormatter = IndexAxisValueFormatter(days)
+
+                position = XAxis.XAxisPosition.BOTTOM
+                granularity = 1f
+                setDrawGridLines(false)
+
+                textColor = AndroidColor.DKGRAY
+            }
+
+            // rotate data
+            val rotatedData = (todayIndex + 1..todayIndex + 7)
+                .map { data[it % 7] }
+
+            val salesEntries = rotatedData.mapIndexed { i,v ->
                 BarEntry(i.toFloat(),v)
             }
 
-            val profitEntries = data.mapIndexed { i,v ->
-                BarEntry(i.toFloat(),v*0.2f)
+            val profitEntries = rotatedData.mapIndexed { i,v ->
+                BarEntry(i.toFloat(),v * 0.2f)
             }
 
             val salesSet = BarDataSet(salesEntries,"Sales").apply {
 
                 color = AndroidColor.parseColor("#4CAF50")
                 valueTextSize = 10f
+
+                valueFormatter = object : ValueFormatter() {
+
+                    override fun getBarLabel(barEntry: BarEntry?): String {
+
+                        return if (barEntry?.y == 0f) "" else barEntry!!.y.toInt().toString()
+
+                    }
+                }
             }
 
             val profitSet = BarDataSet(profitEntries,"Profit").apply {
 
                 color = AndroidColor.parseColor("#FF9800")
                 valueTextSize = 10f
+
+                valueFormatter = object : ValueFormatter() {
+
+                    override fun getBarLabel(barEntry: BarEntry?): String {
+
+                        return if (barEntry?.y == 0f) "" else barEntry!!.y.toInt().toString()
+
+                    }
+                }
             }
 
             val barData = BarData(salesSet,profitSet)
+
             barData.barWidth = 0.35f
 
             chart.data = barData
+
+            chart.groupBars(
+                0f,
+                0.2f,
+                0.05f
+            )
+
+            chart.xAxis.axisMinimum = 0f
+            chart.xAxis.axisMaximum = 7f
 
             chart.marker = object : MarkerView(chart.context, android.R.layout.simple_list_item_1) {
 
@@ -793,11 +960,29 @@ fun ProfitComparisonChart(data: List<Float>) {
 
                     e?.let {
 
-                        val sales = it.y
-                        val profit = sales * 0.2f
+                        val tv = findViewById<TextView>(android.R.id.text1)
 
-                        findViewById<TextView>(android.R.id.text1).text =
-                            "Sales ₹${sales.toInt()} | Profit ₹${profit.toInt()}"
+                        val sales : Float
+                        val profit : Float
+
+                        if(highlight?.dataSetIndex == 0){
+
+                            sales = it.y
+                            profit = sales * 0.2f
+
+                        }else{
+
+                            profit = it.y
+                            sales = profit / 0.2f
+                        }
+
+                        tv.setBackgroundColor(AndroidColor.WHITE)
+                        tv.setTextColor(AndroidColor.parseColor("#333333"))
+
+                        tv.setPadding(20,12,20,12)
+
+                        tv.text =
+                            "Sales ₹${sales.toInt()}\nProfit ₹${profit.toInt()}"
                     }
 
                     super.refreshContent(e, highlight)
@@ -816,6 +1001,7 @@ fun ProfitComparisonChart(data: List<Float>) {
             }
 
             chart.animateY(800)
+
             chart.invalidate()
         },
 
