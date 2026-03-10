@@ -20,6 +20,7 @@ foundation-layout = "1.10.3"
 runtime-version = "1.10.4"
 ui-version = "1.10.4"
 animation-core = "1.10.4"
+foundation-version = "1.10.4"
 
 
 
@@ -64,3 +65,4 @@ androidx-compose-foundation-layout = { group = "androidx.compose.foundation", na
 androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime-version" }
 ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui-version" }
 androidx-compose-animation-core = { group = "androidx.compose.animation", name = "animation-core", version.ref = "animation-core" }
+androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation-version" }

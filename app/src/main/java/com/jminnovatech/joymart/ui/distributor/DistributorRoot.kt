@@ -12,6 +12,7 @@
                                 import androidx.navigation.compose.*
                                 import com.jminnovatech.joymart.core.session.SessionManager
                                 import com.jminnovatech.joymart.ui.distributor.modal.ProductModal
+                                import com.jminnovatech.joymart.ui.distributor.sales.DistributorBillCreateScreen
                                 import kotlinx.coroutines.launch
 
                                 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,13 +104,15 @@
                                             ) {
 
                                                 composable("dashboard") {
-                                                    DistributorDashboardScreen()
+                                                    DistributorDashboardScreen(navController)
                                                 }
 
                                                 composable("products") {
                                                     DistributorProductScreen(refreshTrigger)
                                                 }
-
+                                                composable("create_bill") {
+                                                    DistributorBillCreateScreen()
+                                                }
                                                 composable("orders") {
                                                     DistributorOrdersScreen()
                                                 }

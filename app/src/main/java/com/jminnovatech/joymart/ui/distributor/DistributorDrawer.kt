@@ -43,8 +43,8 @@ fun DistributorDrawer(
         DrawerItem(
             icon = Icons.Default.Dashboard,
             title = "Dashboard",
-            selected = currentRoute == "home",
-            onClick = { onNavigate("home") }
+            selected = currentRoute == "dashboard",
+            onClick = { onNavigate("dashboard") }
         )
 
         // Products

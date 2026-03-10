@@ -136,4 +136,17 @@ interface DistributorApi {
     @GET("admin/profit-analytics")
     suspend fun getProfitAnalytics(): ApiResponse<List<ProfitItem>>
 
+    @GET("sales")
+    suspend fun getSales(): ApiResponse<SalesPagination>
+
+    @FormUrlEncoded
+    @POST("sales")
+    suspend fun createSale(
+        @Field("buyer_name") buyerName:String,
+        @Field("discount") discount:Double,
+        @Field("tax") tax:Double,
+        @Field("paid_amount") paid:Double,
+        @Field("items") items:String
+    ): ApiResponse<Any>
+
 }

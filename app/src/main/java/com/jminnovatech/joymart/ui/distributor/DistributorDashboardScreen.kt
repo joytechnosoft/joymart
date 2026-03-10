@@ -3,7 +3,6 @@ package com.jminnovatech.joymart.ui.distributor
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.widget.TextView
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -31,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.navigation.NavHostController
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.MarkerView
@@ -38,7 +38,6 @@ import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.github.mikephil.charting.highlight.Highlight
-import com.github.mikephil.charting.listener.OnChartValueSelectedListener
 import com.github.mikephil.charting.utils.MPPointF
 import com.google.accompanist.swiperefresh.*
 import kotlinx.coroutines.launch
@@ -52,7 +51,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.github.mikephil.charting.formatter.ValueFormatter
 @Composable
-fun DistributorDashboardScreen() {
+fun DistributorDashboardScreen(navController: NavHostController) {
 
     val api = RetrofitClient.distributorApi
     val scope = rememberCoroutineScope()
@@ -162,14 +161,16 @@ fun DistributorDashboardScreen() {
                             title = "Products",
                             icon = Icons.Default.Inventory,
                             color = Color(0xFF2962FF),
-                            onClick = { showProductsModal = true }
+                            onClick = {
+                                navController.navigate("products")
+                            }
                         )
 
                         MenuCard(
                             title = "Create Bill",
                             icon = Icons.Default.PointOfSale,
                             color = Color(0xFF2E7D32),
-                            onClick = { }
+                            onClick = {navController.navigate("create_bill") }
                         )
 
                         MenuCard(
