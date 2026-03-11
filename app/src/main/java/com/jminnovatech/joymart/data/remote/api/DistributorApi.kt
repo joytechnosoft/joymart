@@ -147,6 +147,6 @@ interface DistributorApi {
         @Field("tax") tax:Double,
         @Field("paid_amount") paid:Double,
         @Field("items") items:String
-    ): ApiResponse<Any>
+    ): CreateSaleResponse
 
 }

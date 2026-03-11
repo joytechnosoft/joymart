@@ -2,219 +2,102 @@ package com.jminnovatech.joymart.ui.distributor.sales
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
-import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import kotlinx.coroutines.launch
 import com.google.gson.Gson
 import com.jminnovatech.joymart.data.remote.api.RetrofitClient
-import com.jminnovatech.joymart.data.model.distributor.BillItem
+import java.text.DecimalFormat
+
+/* ---------------- MODELS ---------------- */
 
 data class ProductItem(
     val id:Int,
     val title:String,
     val price:Double,
-    val stock:Double
+    val mrp:Double,
+    val unit:String,
+    val stock:Double,
+    val discountPercent:Double
 )
 
 data class CartItem(
     val id:Int,
     val title:String,
     val price:Double,
-    val qty:Double
+    val mrp:Double,
+    val unit:String,
+    val discountPercent:Double,
+    val stock:Double,
+    var qty:Double
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DistributorBillCreateScreen(){
 
-    val scope = rememberCoroutineScope()
-
-    var bills by remember{ mutableStateOf(listOf<BillItem>()) }
-    var search by remember{ mutableStateOf("") }
-    var loading by remember{ mutableStateOf(true) }
-    var showPOS by remember{ mutableStateOf(false) }
-
-    LaunchedEffect(Unit){
-
-        try{
-
-            val r = RetrofitClient.distributorApi.getSales()
-
-            bills = r.data?.data ?: emptyList()
-
-        }catch(_:Exception){}
-
-        loading=false
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(14.dp)
-    ){
-
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ){
-
-            Text(
-                "Billing",
-                style = MaterialTheme.typography.headlineSmall
-            )
-
-            Button(
-                onClick={showPOS=true}
-            ){
-                Icon(Icons.Default.Add,null)
-                Spacer(Modifier.width(6.dp))
-                Text("Create Bill")
-            }
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        OutlinedTextField(
-            value=search,
-            onValueChange={search=it},
-            label={Text("Search Bill")},
-            modifier=Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(10.dp))
-
-        if(loading){
-
-            Box(
-                modifier=Modifier.fillMaxSize(),
-                contentAlignment=Alignment.Center
-            ){
-                CircularProgressIndicator()
-            }
-
-        }else{
-
-            LazyColumn{
-
-                items(
-                    bills.filter{
-                        it.bill_no.contains(search,true) ||
-                                (it.buyer_name ?: "").contains(search,true)
-                    }
-                ){
-
-                    BillCard(it)
-                }
-            }
-        }
-    }
-
-    if(showPOS){
-
-        ModalBottomSheet(
-            onDismissRequest={showPOS=false}
-        ){
-
-            CreateBillPOS()
-        }
-    }
-}
-
-@Composable
-fun BillCard(bill:BillItem){
-
     val context = LocalContext.current
-
-    Card(
-        modifier=Modifier
-            .fillMaxWidth()
-            .padding(vertical=6.dp),
-        shape=RoundedCornerShape(12.dp)
-    ){
-
-        Column(
-            modifier=Modifier.padding(12.dp)
-        ){
-
-            Text("Bill : ${bill.bill_no}")
-
-            Text("Customer : ${bill.buyer_name ?: "-"}")
-
-            Text("Total : ₹${bill.total}")
-
-            Spacer(Modifier.height(6.dp))
-
-            Button(
-                onClick={
-
-                    val intent = Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse(
-                            "https://jminnovatech.xyz/enjoybazar/invoice/${bill.bill_no}"
-                        )
-                    )
-
-                    context.startActivity(intent)
-                }
-            ){
-
-                Text("View Invoice")
-
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CreateBillPOS(){
-
     val scope = rememberCoroutineScope()
-    val snackbar = remember{ SnackbarHostState() }
 
-    var products by remember{ mutableStateOf(listOf<ProductItem>()) }
-    val cart = remember{ mutableStateListOf<CartItem>() }
+    var products by remember { mutableStateOf(listOf<ProductItem>()) }
+    val cart = remember { mutableStateListOf<CartItem>() }
 
-    var buyerName by remember{ mutableStateOf("") }
-    var buyerPhone by remember{ mutableStateOf("") }
-    var buyerAddress by remember{ mutableStateOf("") }
+    var productMenu by remember { mutableStateOf(false) }
 
-    var productSearch by remember{ mutableStateOf("") }
+    var buyerName by remember { mutableStateOf("") }
+    var buyerPhone by remember { mutableStateOf("") }
+    var buyerAddress by remember { mutableStateOf("") }
 
-    var discountType by remember{ mutableStateOf("Amount") }
-    var discountValue by remember{ mutableStateOf("0") }
+    var discountValue by remember { mutableStateOf("0") }
+    var gst by remember { mutableStateOf("0") }
+    var paid by remember { mutableStateOf("0") }
 
-    var gst by remember{ mutableStateOf("0") }
-    var paid by remember{ mutableStateOf("0") }
+    var loading by remember { mutableStateOf(false)}
 
-    var loading by remember{ mutableStateOf(false) }
+    val df = DecimalFormat("0.00")
+
+    fun format2(v:Double):String{
+        return df.format(v)
+    }
+
+    /* -------- LOAD PRODUCTS -------- */
 
     LaunchedEffect(Unit){
 
         try{
 
-            val r = RetrofitClient.distributorApi.getProducts()
+            val res = RetrofitClient.distributorApi.getProducts()
 
-            products = r.data?.data?.map{
+            products = res.data?.data?.map{
 
                 ProductItem(
                     id = it.id,
-                    title = it.title,
-                    price = it.sell_price.toDouble(),
-                    stock = it.stock_qty.toDouble()
+                    title = it.title ?: "",
+                    price = it.sell_price?.toDouble() ?: 0.0,
+                    mrp = it.mrp?.toDouble() ?: 0.0,
+                    unit = it.unit ?: "",
+                    stock = it.stock_qty?.toDouble() ?: 0.0,
+                    discountPercent = it.discount_percent?.toDouble() ?: 0.0
                 )
 
             } ?: emptyList()
@@ -222,289 +105,466 @@ fun CreateBillPOS(){
         }catch(_:Exception){}
     }
 
-    val subtotal = cart.sumOf{ it.price * it.qty }
+    /* -------- CALCULATIONS -------- */
 
-    val discountNum = discountValue.toDoubleOrNull() ?: 0.0
+    val subtotal = cart.sumOf { it.price * it.qty }
 
-    val discountAmount =
-        if(discountType=="Amount")
-            discountNum
-        else
-            subtotal * discountNum / 100
+    val discountAmount = discountValue.toDoubleOrNull() ?: 0.0
 
     val gstAmount =
-        (subtotal-discountAmount) *
+        (subtotal - discountAmount) *
                 (gst.toDoubleOrNull() ?: 0.0) / 100
 
-    val total = (subtotal-discountAmount)+gstAmount
+    val total = subtotal - discountAmount + gstAmount
 
     val paidAmount = paid.toDoubleOrNull() ?: 0.0
 
-    val due = total-paidAmount
+    val due = total - paidAmount
 
-    val filteredProducts =
-        products.filter{
-            it.title.contains(productSearch,true)
+    val paymentStatus =
+        when{
+            paidAmount == 0.0 -> "Due"
+            paidAmount < total -> "Partial"
+            else -> "Paid"
         }
 
-    Scaffold(
-        snackbarHost={ SnackbarHost(snackbar) }
-    ){pad->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ){
+
+        Text(
+            "Create Bill",
+            style = MaterialTheme.typography.headlineSmall
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        /* -------- CUSTOMER -------- */
+
+        Card{
+
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ){
+
+                OutlinedTextField(
+                    value = buyerName,
+                    onValueChange = { buyerName = it },
+                    label = { Text("Customer Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = buyerPhone,
+                    onValueChange = { buyerPhone = it },
+                    label = { Text("Customer Phone") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = buyerAddress,
+                    onValueChange = { buyerAddress = it },
+                    label = { Text("Customer Address") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        /* -------- PRODUCT SELECT -------- */
+
+        ExposedDropdownMenuBox(
+            expanded = productMenu,
+            onExpandedChange = { productMenu = !productMenu }
+        ){
+
+            OutlinedTextField(
+                value = "Select Product",
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                label = { Text("Select Product") }
+            )
+
+            ExposedDropdownMenu(
+                expanded = productMenu,
+                onDismissRequest = { productMenu=false }
+            ){
+
+                products.forEach{p->
+
+                    DropdownMenuItem(
+                        text={ Text("${p.title} (₹${p.price}/${p.unit})") },
+                        onClick={
+
+                            productMenu=false
+
+                            if(p.stock<=0){
+
+                                Toast.makeText(
+                                    context,
+                                    "Out of stock",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+
+                            }else{
+
+                                if(cart.find{it.id==p.id}==null){
+
+                                    cart.add(
+                                        CartItem(
+                                            id=p.id,
+                                            title=p.title,
+                                            price=p.price,
+                                            mrp=p.mrp,
+                                            unit=p.unit,
+                                            discountPercent=p.discountPercent,
+                                            stock=p.stock,
+                                            qty=1.0
+                                        )
+                                    )
+
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        /* -------- CART TABLE -------- */
+
+        val scrollState = rememberScrollState()
 
         Column(
             modifier = Modifier
-                .padding(pad)
-                .padding(14.dp)
-                .verticalScroll(rememberScrollState())
-        ){
+                .horizontalScroll(scrollState)
+                .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(10.dp))
+        ) {
 
-            Text(
-                "Create Bill",
-                style = MaterialTheme.typography.headlineSmall
-            )
+            /* ---------- HEADER ---------- */
 
-            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .background(Color(0xFF1976D2))
+                    .padding(vertical = 10.dp)
+            ) {
 
-            OutlinedTextField(
-                value=buyerName,
-                onValueChange={buyerName=it},
-                label={Text("Customer Name")},
-                modifier=Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value=buyerPhone,
-                onValueChange={buyerPhone=it},
-                label={Text("Phone")},
-                modifier=Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value=buyerAddress,
-                onValueChange={buyerAddress=it},
-                label={Text("Address")},
-                modifier=Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            OutlinedTextField(
-                value=productSearch,
-                onValueChange={productSearch=it},
-                label={Text("Search Product")},
-                modifier=Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.height(250.dp)
-            ){
-
-                items(filteredProducts){p->
-
-                    Card(
-                        modifier=Modifier.padding(6.dp),
-                        shape=RoundedCornerShape(12.dp)
-                    ){
-
-                        Column(
-                            Modifier.padding(10.dp)
-                        ){
-
-                            Text(p.title)
-
-                            Text(
-                                "₹${p.price}",
-                                color=Color.Gray
-                            )
-
-                            Spacer(Modifier.height(6.dp))
-
-                            Button(
-                                onClick={
-
-                                    val index =
-                                        cart.indexOfFirst{it.id==p.id}
-
-                                    if(index!=-1){
-
-                                        val item=cart[index]
-
-                                        cart[index] =
-                                            item.copy(qty=item.qty+1)
-
-                                    }else{
-
-                                        cart.add(
-                                            CartItem(
-                                                id=p.id,
-                                                title=p.title,
-                                                price=p.price,
-                                                qty=1.0
-                                            )
-                                        )
-                                    }
-                                },
-                                modifier=Modifier.fillMaxWidth()
-                            ){
-                                Text("Add")
-                            }
-                        }
-                    }
-                }
+                HeaderCell("Product",170.dp,Color.White)
+                HeaderCell("Qty",80.dp,Color.White)
+                HeaderCell("MRP",70.dp,Color.White)
+                HeaderCell("Sell",70.dp,Color.White)
+                HeaderCell("Disc%",70.dp,Color.White)
+                HeaderCell("Total",90.dp,Color.White)
+                HeaderCell("Action",60.dp,Color.White)
             }
 
-            Spacer(Modifier.height(10.dp))
+            cart.forEachIndexed { index, item ->
 
-            AnimatedVisibility(cart.isNotEmpty()){
+                Row(
+                    modifier = Modifier
+                        .background(
+                            if(index % 2 == 0)
+                                Color.White
+                            else
+                                Color(0xFFF7F7F7)
+                        )
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ){
 
-                Column{
+                    /* PRODUCT */
 
-                    Text("Cart")
-
-                    LazyColumn(
-                        modifier=Modifier.height(150.dp)
+                    Column(
+                        modifier = Modifier.width(170.dp)
                     ){
 
-                        items(cart){item->
+                        Text(
+                            item.title,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
 
-                            Row(
-                                modifier=Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp),
-                                verticalAlignment=Alignment.CenterVertically
-                            ){
+                        Text(
+                            "Stock ${format2(item.stock)} ${item.unit}",
+                            color = Color(0xFF2E7D32),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
 
-                                Column(
-                                    modifier=Modifier.weight(1f)
-                                ){
+                    /* QTY INPUT */
 
-                                    Text(item.title)
+                    var qtyText by remember { mutableStateOf(format2(item.qty)) }
 
-                                    Text("₹${item.price * item.qty}")
-                                }
+                    OutlinedTextField(
+                        value = qtyText,
+                        onValueChange = { newValue ->
 
-                                IconButton(
-                                    onClick={
+                            qtyText = newValue
 
-                                        val index =
-                                            cart.indexOf(item)
+                            val q = newValue.toDoubleOrNull()
 
-                                        if(item.qty>1){
+                            if(q != null && q <= item.stock){
 
-                                            cart[index] =
-                                                item.copy(qty=item.qty-1)
+                                cart[index] = item.copy(qty = q)
 
-                                        }
-                                    }
-                                ){
-                                    Icon(Icons.Default.Remove,null)
-                                }
-
-                                Text(item.qty.toString())
-
-                                IconButton(
-                                    onClick={
-
-                                        val index =
-                                            cart.indexOf(item)
-
-                                        cart[index] =
-                                            item.copy(qty=item.qty+1)
-                                    }
-                                ){
-                                    Icon(Icons.Default.Add,null)
-                                }
-
-                                IconButton(
-                                    onClick={cart.remove(item)}
-                                ){
-                                    Icon(Icons.Default.Delete,null)
-                                }
                             }
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            Text("Subtotal : ₹$subtotal")
-            Text("Total : ₹$total")
-            Text(
-                "Due : ₹$due",
-                color=if(due>0)Color.Red else Color.Green
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            Button(
-                onClick={
-
-                    if(buyerName.isEmpty()){
-
-                        scope.launch{
-                            snackbar.showSnackbar(
-                                "Customer name required"
-                            )
-                        }
-
-                        return@Button
-                    }
-
-                    scope.launch{
-
-                        loading=true
-
-                        try{
-
-                            val items =
-                                cart.map{
-                                    mapOf(
-                                        "id" to it.id,
-                                        "qty" to it.qty,
-                                        "price" to it.price
-                                    )
-                                }
-
-                            val json =
-                                Gson().toJson(items)
-
-                            RetrofitClient
-                                .distributorApi
-                                .createSale(
-                                    buyerName,
-                                    discountAmount,
-                                    gstAmount,
-                                    paidAmount,
-                                    json
-                                )
-
-                            snackbar.showSnackbar("Bill Created")
-
-                            cart.clear()
-
-                        }catch(_:Exception){
-
-                            snackbar.showSnackbar("Failed")
-                        }
-
-                        loading=false
-                    }
-                },
-                modifier=Modifier.fillMaxWidth()
-            ){
-
-                if(loading)
-                    CircularProgressIndicator(
-                        color=Color.White,
-                        modifier=Modifier.size(18.dp)
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal
+                        ),
+                        singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(
+                            textAlign = TextAlign.Center
+                        ),
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(50.dp)
                     )
-                else
-                    Text("Generate Bill")
+
+                    /* MRP */
+
+                    TableCell("₹${format2(item.mrp)}",70.dp)
+
+                    /* SELL */
+
+                    TableCell("₹${format2(item.price)}",70.dp)
+
+                    /* DISC */
+
+                    TableCell("${format2(item.discountPercent)}%",70.dp)
+
+                    /* TOTAL */
+
+                    TableCell(
+                        "₹${format2(item.price * item.qty)}",
+                        90.dp
+                    )
+
+                    /* DELETE */
+
+                    Box(
+                        modifier = Modifier.width(60.dp),
+                        contentAlignment = Alignment.Center
+                    ){
+
+                        IconButton(
+                            onClick = { cart.removeAt(index) }
+                        ){
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = Color(0xFFD32F2F)
+                            )
+                        }
+
+                    }
+                }
+
+                Divider()
             }
         }
+
+        Spacer(Modifier.height(16.dp))
+
+        /* -------- DISCOUNT -------- */
+
+        Row{
+
+            OutlinedTextField(
+                value = discountValue,
+                onValueChange = { discountValue = it },
+                label = { Text("Discount") },
+                modifier = Modifier.weight(1f)
+            )
+
+            Spacer(Modifier.width(8.dp))
+
+            OutlinedTextField(
+                value = gst,
+                onValueChange = { gst = it },
+                label = { Text("GST %") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        /* -------- SUMMARY -------- */
+
+        Text("Subtotal : ₹${format2(subtotal)}")
+
+        Text("Discount : ₹${format2(discountAmount)}")
+
+        Text("GST : ₹${format2(gstAmount)}")
+
+        Text(
+            "Total : ₹${format2(total)}",
+            style = MaterialTheme.typography.headlineSmall
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        /* -------- PAYMENT -------- */
+
+        Row{
+
+            var paidText by remember { mutableStateOf("") }
+
+            OutlinedTextField(
+                value = paidText,
+                onValueChange = { newValue ->
+
+                    paidText = newValue
+
+                    val v = newValue.toDoubleOrNull()
+
+                    if (v != null) {
+
+                        if (v <= total) {
+
+                            paid = newValue
+
+                        } else {
+
+                            /* limit to total */
+
+                            paidText = format2(total)
+                            paid = format2(total)
+
+                        }
+                    }
+                },
+                label = { Text("Paid Amount") },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal
+                ),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+
+            Spacer(Modifier.width(8.dp))
+
+            OutlinedTextField(
+                value = format2(due),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Due") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Text("Payment Status : $paymentStatus")
+
+        Spacer(Modifier.height(20.dp))
+
+        Button(
+            onClick = {
+
+                scope.launch{
+
+                    if(cart.isEmpty()){
+
+                        Toast.makeText(
+                            context,
+                            "Add product first",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        return@launch
+                    }
+
+                    loading=true
+
+                    try{
+
+                        val items = cart.map{
+
+                            mapOf(
+                                "id" to it.id,
+                                "qty" to it.qty,
+                                "price" to it.price
+                            )
+                        }
+
+                        val json = Gson().toJson(items)
+
+                        val res =
+                            RetrofitClient.distributorApi.createSale(
+                                buyerName,
+                                discountAmount,
+                                gstAmount,
+                                paidAmount,
+                                json
+                            )
+
+                        val billNo = res.data.bill_no
+
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://jminnovatech.xyz/enjoybazar/invoice/$billNo")
+                        )
+
+                        context.startActivity(intent)
+
+                    }catch(_:Exception){}
+
+                    loading=false
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ){
+
+            if(loading)
+                CircularProgressIndicator()
+            else
+                Text("Save Bill")
+        }
     }
+}
+
+/* -------- HELPER UI -------- */
+
+@Composable
+fun HeaderCell(
+    text:String,
+    width:Dp,
+    color:Color
+){
+
+    Text(
+        text = text,
+        modifier = Modifier
+            .width(width),
+        color = color,
+        style = MaterialTheme.typography.labelMedium,
+        textAlign = TextAlign.Center
+    )
+}
+
+@Composable
+fun TableCell(
+    text:String,
+    width:Dp
+){
+
+    Text(
+        text = text,
+        modifier = Modifier
+            .width(width),
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.bodyMedium
+    )
 }

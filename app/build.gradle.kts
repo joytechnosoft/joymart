@@ -78,6 +78,7 @@ dependencies {
     implementation(libs.ui)
     implementation(libs.androidx.compose.animation.core)
     implementation(libs.androidx.foundation)
+    implementation(libs.androidx.compose.ui.unit)
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.compose.material:material-icons-extended")
 
