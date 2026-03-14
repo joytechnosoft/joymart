@@ -111,7 +111,7 @@
                                                     DistributorProductScreen(refreshTrigger)
                                                 }
                                                 composable("create_bill") {
-                                                    DistributorBillCreateScreen()
+                                                    DistributorBillCreateScreen(navController)
                                                 }
                                                 composable("orders") {
                                                     DistributorOrdersScreen()

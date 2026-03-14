@@ -24,8 +24,6 @@ data class CreateSaleResponse(
     val data: SaleData
 )
 
-/* ---------------- SALE DATA ---------------- */
-
 data class SaleData(
     val id: Int,
     val bill_no: String
