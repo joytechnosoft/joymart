@@ -113,13 +113,20 @@
                                                 composable("create_bill") {
                                                     DistributorBillCreateScreen(navController)
                                                 }
+                                                composable("bill_payments") {
+                                                    DistributorBillPaymentScreen()
+                                                }
                                                 composable("orders") {
                                                     DistributorOrdersScreen()
                                                 }
+                                                composable("payment_verification") {
 
+                                                    DistributorPaymentVerificationScreen()
+                                                }
                                                 composable("profile") {
                                                     DistributorProfileScreen()
                                                 }
+
                                             }
                                         }
                                         if (showProductModal) {

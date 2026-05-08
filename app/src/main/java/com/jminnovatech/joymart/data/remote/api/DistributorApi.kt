@@ -148,5 +148,51 @@ interface DistributorApi {
         @Field("paid_amount") paid:Double,
         @Field("items") items:String
     ): CreateSaleResponse
+    @GET("distributor/bill-payments")
+    suspend fun getBillPayments(
+        @Query("status") status: String = "due",
+        @Query("search") search: String? = null,
+        @Query("per_page") perPage: Int = 50
+    ): BillPaymentResponse
+    @FormUrlEncoded
+    @POST("distributor/bill-payments")
+    suspend fun submitPayment(
 
+        @Field("sale_id") saleId: Int,
+
+        @Field("amount") amount: Double,
+
+        @Field("method") method: String,
+
+        @Field("need_approval") needApproval: Int,
+
+        @Field("utr_no") utrNo: String?
+    ): ApiResponse<Any>
+
+    // =========================
+// PAYMENT VERIFICATION
+// =========================
+
+    @GET("admin/payments/pending")
+    suspend fun getPendingPayments():
+            PendingPaymentResponse
+
+    @POST("admin/payments/{id}/approve")
+    suspend fun approvePayment(
+        @Path("id") id: Int
+    ): ApiResponse<Any>
+
+    @FormUrlEncoded
+    @POST("admin/payments/{id}/reject")
+    suspend fun rejectPayment(
+
+        @Path("id") id: Int,
+
+        @Field("reason") reason: String
+    ): ApiResponse<Any>
+
+    @GET("admin/payments/{saleId}/history")
+    suspend fun paymentHistory(
+        @Path("saleId") saleId: Int
+    ): PaymentHistoryResponse
 }

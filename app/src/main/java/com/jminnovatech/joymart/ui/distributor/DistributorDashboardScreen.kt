@@ -191,7 +191,11 @@ fun DistributorDashboardScreen(navController: NavHostController) {
                             title = "Verify",
                             icon = Icons.Default.VerifiedUser,
                             color = Color(0xFFD32F2F),
-                            onClick = { }
+                            onClick = {
+                                navController.navigate(
+                                    "payment_verification"
+                                )
+                            }
                         )
 
                         MenuCard(
@@ -654,6 +658,9 @@ fun SalesChart(data: List<Float>) {
             val days = (todayIndex + 1..todayIndex + 7)
                 .map { allDays[it % 7] }
 
+            val rotatedData = (todayIndex + 1..todayIndex + 7)
+                .map { data.getOrNull(it % 7) ?: 0f }
+
             chart.xAxis.apply {
 
                 valueFormatter = IndexAxisValueFormatter(days)
@@ -665,8 +672,7 @@ fun SalesChart(data: List<Float>) {
                 textColor = AndroidColor.DKGRAY
             }
 
-            val rotatedData = (todayIndex + 1..todayIndex + 7)
-                .map { data[it % 7] }
+
 
             val salesEntries = rotatedData.mapIndexed { i,v ->
                 Entry(i.toFloat(),v)
@@ -803,8 +809,13 @@ fun SalesChart(data: List<Float>) {
 
             chart.animateX(800)
 
-            // 🔥 highlight today (always last index)
-            chart.highlightValue(6f,0)
+// ✅ SAFE highlight
+            if (rotatedData.isNotEmpty()) {
+
+                val lastIndex = rotatedData.lastIndex.toFloat()
+
+                chart.highlightValue(lastIndex, 0)
+            }
 
             chart.invalidate()
         },
@@ -879,14 +890,14 @@ fun ProfitComparisonChart(data: List<Float>) {
 
             val allDays = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
 
-            // today index API 24 compatible
             val todayIndex = (java.util.Calendar.getInstance()
                 .get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
 
-            // rotate days
             val days = (todayIndex + 1..todayIndex + 7)
                 .map { allDays[it % 7] }
 
+            val rotatedData = (todayIndex + 1..todayIndex + 7)
+                .map { data.getOrNull(it % 7) ?: 0f }
             chart.xAxis.apply {
 
                 valueFormatter = IndexAxisValueFormatter(days)
@@ -899,8 +910,7 @@ fun ProfitComparisonChart(data: List<Float>) {
             }
 
             // rotate data
-            val rotatedData = (todayIndex + 1..todayIndex + 7)
-                .map { data[it % 7] }
+
 
             val salesEntries = rotatedData.mapIndexed { i,v ->
                 BarEntry(i.toFloat(),v)

@@ -69,7 +69,7 @@ fun DistributorDrawer(
             onNavigate = onNavigate,
             children = listOf(
                 Triple("Create Bill (POS)", "create_bill", Icons.Default.PointOfSale),
-                Triple("Bill Payments", "bill_payments", Icons.Default.Payments)
+                Triple("Bill Payments", "bill_payments", Icons.Default.Receipt)
             )
         )
 
