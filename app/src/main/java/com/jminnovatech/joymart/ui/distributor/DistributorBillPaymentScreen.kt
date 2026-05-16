@@ -1,18 +1,27 @@
 package com.jminnovatech.joymart.ui.distributor
+import android.content.Intent
+import android.net.Uri
 import com.jminnovatech.joymart.data.model.distributor.BillPaymentItem
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CurrencyRupee
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -21,13 +30,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 
 import com.jminnovatech.joymart.data.remote.api.RetrofitClient
 import kotlinx.coroutines.launch
 
+
+import java.text.NumberFormat
+import java.util.Locale
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 // ==============================
 // DATA MODELS
 // ==============================
@@ -43,7 +59,7 @@ fun DistributorBillPaymentScreen() {
 
     val api = RetrofitClient.distributorApi
     val scope = rememberCoroutineScope()
-
+    val context = LocalContext.current
     var bills by remember {
         mutableStateOf<List<BillPaymentItem>>(emptyList())
     }
@@ -113,7 +129,7 @@ fun DistributorBillPaymentScreen() {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(10.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFF1565C0)
                 ),
@@ -122,7 +138,7 @@ fun DistributorBillPaymentScreen() {
             ) {
 
                 Column(
-                    modifier = Modifier.padding(20.dp)
+                    modifier = Modifier.padding(10.dp)
                 ) {
 
                     Row(
@@ -202,115 +218,269 @@ fun DistributorBillPaymentScreen() {
 
                 items(filteredBills) { bill ->
 
+                    var expanded by remember {
+                        mutableStateOf(false)
+                    }
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .animateContentSize(),
+
                         shape = RoundedCornerShape(22.dp),
-                        elevation = CardDefaults.cardElevation(6.dp)
+
+                        elevation = CardDefaults.cardElevation(5.dp),
+
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        )
                     ) {
 
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(14.dp)
                         ) {
+
+                            // ================= TOP =================
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
 
-                                Column {
+                                // LEFT
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
 
                                     Text(
                                         bill.bill_no,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF0D47A1)
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF0F172A),
+                                        maxLines = 1
                                     )
 
-                                    Spacer(Modifier.height(4.dp))
+                                    Spacer(Modifier.height(3.dp))
 
                                     Text(
                                         bill.buyer_name,
-                                        color = Color.Gray
+                                        color = Color.Gray,
+                                        fontSize = 12.sp,
+                                        maxLines = 1
                                     )
+
+                                    Spacer(Modifier.height(8.dp))
+
+                                    Row {
+
+                                        // TOTAL
+                                        Surface(
+                                            color = Color(0xFFF1F5F9),
+                                            shape = RoundedCornerShape(50)
+                                        ) {
+
+                                            Text(
+                                                "Total ₹${formatAmount(bill.total)}",
+                                                modifier = Modifier.padding(
+                                                    horizontal = 10.dp,
+                                                    vertical = 5.dp
+                                                ),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF334155)
+                                            )
+                                        }
+
+                                        Spacer(Modifier.width(8.dp))
+
+                                        // DUE
+                                        Surface(
+                                            color = Color(0xFFFFEBEE),
+                                            shape = RoundedCornerShape(50)
+                                        ) {
+
+                                            Text(
+                                                "Due ₹${formatAmount(bill.due_amount)}",
+                                                modifier = Modifier.padding(
+                                                    horizontal = 10.dp,
+                                                    vertical = 5.dp
+                                                ),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFFD32F2F)
+                                            )
+                                        }
+                                    }
                                 }
 
-                                Surface(
-                                    color = Color(0xFFFFEBEE),
-                                    shape = RoundedCornerShape(50)
+                                // RIGHT
+                                Column(
+                                    horizontalAlignment = Alignment.End
                                 ) {
 
-                                    Text(
-                                        "₹${bill.due_amount}",
-                                        modifier = Modifier.padding(
-                                            horizontal = 12.dp,
-                                            vertical = 6.dp
-                                        ),
-                                        color = Color.Red,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Surface(
+                                        color =
+                                            if (bill.due_amount > 0)
+                                                Color(0xFFFFF3E0)
+                                            else
+                                                Color(0xFFE8F5E9),
+
+                                        shape = RoundedCornerShape(50)
+                                    ) {
+
+                                        Text(
+
+                                            if (bill.due_amount > 0)
+                                                "DUE"
+                                            else
+                                                "PAID",
+
+                                            modifier = Modifier.padding(
+                                                horizontal = 10.dp,
+                                                vertical = 5.dp
+                                            ),
+
+                                            color =
+                                                if (bill.due_amount > 0)
+                                                    Color(0xFFEF6C00)
+                                                else
+                                                    Color(0xFF2E7D32),
+
+                                            fontWeight = FontWeight.Bold,
+
+                                            fontSize = 11.sp
+                                        )
+                                    }
+
+                                    Spacer(Modifier.height(10.dp))
+
+                                    IconButton(
+
+                                        onClick = {
+                                            expanded = !expanded
+                                        },
+
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+
+                                        Icon(
+
+                                            if (expanded)
+                                                Icons.Default.KeyboardArrowUp
+                                            else
+                                                Icons.Default.KeyboardArrowDown,
+
+                                            contentDescription = null,
+
+                                            tint = Color(0xFF1565C0)
+                                        )
+                                    }
                                 }
                             }
 
-                            Spacer(Modifier.height(14.dp))
+                            // ================= EXPANDABLE =================
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
+                            if (expanded) {
 
-                                Column {
+                                Spacer(Modifier.height(14.dp))
 
-                                    Text(
-                                        "Total",
-                                        color = Color.Gray
-                                    )
+                                HorizontalDivider(
+                                    color = Color(0xFFE2E8F0)
+                                )
 
-                                    Text(
-                                        "₹${bill.total}",
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                Spacer(Modifier.height(14.dp))
 
-                                Row {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement =
+                                        Arrangement.End
+                                ) {
 
-                                    Button(
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF2E7D32)
-                                        ),
-                                        shape = RoundedCornerShape(50),
-                                        onClick = {
-                                            selectedBill = bill
-                                        }
+                                    Row(
+                                        horizontalArrangement =
+                                            Arrangement.spacedBy(8.dp)
                                     ) {
 
-                                        Icon(
-                                            Icons.Default.Payment,
-                                            null
-                                        )
+                                        Button(
 
-                                        Spacer(Modifier.width(6.dp))
+                                            onClick = {
+                                                selectedBill = bill
+                                            },
 
-                                        Text("Receive")
-                                    }
+                                            modifier = Modifier.height(38.dp),
 
-                                    Spacer(Modifier.width(8.dp))
+                                            contentPadding = PaddingValues(
+                                                horizontal = 12.dp,
+                                                vertical = 0.dp
+                                            ),
 
-                                    OutlinedButton(
-                                        shape = RoundedCornerShape(50),
-                                        onClick = {
+                                            shape = RoundedCornerShape(14.dp),
 
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFF16A34A)
+                                            )
+                                        ) {
+
+                                            Icon(
+                                                Icons.Default.Payment,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+
+                                            Spacer(Modifier.width(4.dp))
+
+                                            Text(
+                                                "Receive",
+                                                fontSize = 12.sp
+                                            )
                                         }
-                                    ) {
 
-                                        Icon(
-                                            Icons.Default.Receipt,
-                                            null
-                                        )
+                                        OutlinedButton(
 
-                                        Spacer(Modifier.width(6.dp))
+                                            onClick = {
 
-                                        Text("View")
+                                                val invoiceUrl =
+
+                                                    RetrofitClient
+                                                        .getBaseUrl()
+                                                        .replace("/api/", "/invoice/") +
+
+                                                            bill.bill_no
+
+                                                val intent = Intent(
+                                                    Intent.ACTION_VIEW,
+                                                    Uri.parse(invoiceUrl)
+                                                )
+
+                                                context.startActivity(intent)
+
+
+                                            },
+
+                                            modifier = Modifier.height(38.dp),
+
+                                            contentPadding = PaddingValues(
+                                                horizontal = 12.dp,
+                                                vertical = 0.dp
+                                            ),
+
+                                            shape = RoundedCornerShape(14.dp)
+                                        ) {
+
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.ReceiptLong,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+
+                                            Spacer(Modifier.width(4.dp))
+
+                                            Text(
+                                                "View",
+                                                fontSize = 12.sp
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -494,25 +664,52 @@ fun PaymentModal(
                 Spacer(Modifier.height(18.dp))
 
                 // AMOUNT
-
                 OutlinedTextField(
+
                     value = amount,
+
                     onValueChange = {
 
-                        val v = it.toDoubleOrNull()
+                        // allow only numbers + decimal
 
-                        if (v == null || v <= bill.due_amount) {
-                            amount = it
+                        if (
+                            it.matches(
+                                Regex("""^\d*\.?\d*$""")
+                            )
+                        ) {
+
+                            val v =
+                                it.toDoubleOrNull()
+
+                            if (
+                                v == null ||
+                                v <= bill.due_amount
+                            ) {
+
+                                amount = it
+                            }
                         }
                     },
+
                     label = {
                         Text("Amount")
                     },
+
                     placeholder = {
-                        Text("Max ₹${bill.due_amount}")
+                        Text(
+                            "Max ₹${formatAmount(bill.due_amount)}"
+                        )
                     },
+
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal
+                    ),
+
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+
+                    singleLine = true,
+
+                    shape = RoundedCornerShape(16.dp)
                 )
 
                 Spacer(Modifier.height(14.dp))
@@ -736,4 +933,11 @@ fun PaymentModal(
             }
         )
     }
+}
+
+fun formatAmount(amount: Double): String {
+
+    return NumberFormat
+        .getNumberInstance(Locale("en", "IN"))
+        .format(amount)
 }

@@ -11,7 +11,9 @@ object RetrofitClient {
 
     private const val BASE_URL = "https://jminnovatech.xyz/enjoybazar/api/"
 
-
+    fun getBaseUrl(): String {
+        return BASE_URL
+    }
     private lateinit var session: SessionManager
 
     fun init(sessionManager: SessionManager) {
@@ -34,7 +36,15 @@ object RetrofitClient {
     }
 
     private val client = OkHttpClient.Builder()
+
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+
+        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+
         .addInterceptor(authInterceptor)
+
         .build()
 
     private val gson = GsonBuilder()

@@ -296,7 +296,7 @@ fun DistributorPaymentVerificationScreen() {
                                 Icon(
                                     Icons.Default.History,
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(50.dp)
                                 )
 
                                 Spacer(Modifier.width(4.dp))

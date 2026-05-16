@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.*
 import com.jminnovatech.joymart.core.session.SessionManager
+import com.jminnovatech.joymart.ui.distributor.orders.DistributorOrdersScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,7 +78,7 @@ fun DistributorHomeScreen(
                 }
 
                 composable("orders") {
-                    DistributorOrdersScreen()
+                    DistributorOrdersScreen(navController)
                 }
 
                 composable("profile") {

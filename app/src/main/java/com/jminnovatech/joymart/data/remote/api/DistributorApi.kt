@@ -143,6 +143,8 @@ interface DistributorApi {
     @POST("sales")
     suspend fun createSale(
         @Field("buyer_name") buyerName:String,
+        @Field("buyer_phone") buyerPhone:String,
+        @Field("buyer_address") buyerAddress:String,
         @Field("discount") discount:Double,
         @Field("tax") tax:Double,
         @Field("paid_amount") paid:Double,
@@ -195,4 +197,53 @@ interface DistributorApi {
     suspend fun paymentHistory(
         @Path("saleId") saleId: Int
     ): PaymentHistoryResponse
+
+    @GET("distributor/orders")
+    suspend fun getCustomerOrders(
+        @Query("status") status: String = "pending"
+    ): CustomerOrdersResponse
+
+
+    @FormUrlEncoded
+    @POST("distributor/orders/{id}/accept")
+    suspend fun acceptCustomerOrder(
+
+        @Path("id") orderId: Int,
+
+        @Field("paid_amount") paidAmount: Double
+
+    ): AcceptOrderResponse
+
+
+    @POST("distributor/orders/{id}/reject")
+    suspend fun rejectCustomerOrder(
+        @Path("id") orderId: Int
+    ): ApiResponse<Any>
+
+    @GET("distributor/profile")
+    suspend fun getDistributorProfile():
+            DistributorProfileResponse
+
+
+    @FormUrlEncoded
+    @POST("distributor/profile/update")
+    suspend fun updateDistributorProfile(
+
+        @Field("name") name: String,
+
+        @Field("phone") phone: String,
+
+        @Field("address") address: String,
+
+        @Field("upi_id") upiId: String,
+
+        @Field("consignor_name") consignorName: String,
+
+        @Field("latitude") latitude: String,
+
+        @Field("longitude") longitude: String,
+
+        @Field("upi_qr_url") upiQrUrl: String
+
+    ): ApiResponse<Any>
 }

@@ -12,7 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 @Composable
 fun DistributorDrawer(
     currentRoute: String?,
@@ -20,115 +21,228 @@ fun DistributorDrawer(
     onNavigate: (String) -> Unit,
     onLogout: () -> Unit
 ) {
-
+    var showLogoutDialog by remember {
+        mutableStateOf(false)
+    }
     Column(
         modifier = Modifier
             .fillMaxHeight()
             .width(300.dp)
             .background(MaterialTheme.colorScheme.surface)
-            .padding(16.dp)
     ) {
 
-        Text(
-            text = "JoyMart",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
+        // ================= SCROLLABLE CONTENT =================
 
-        Spacer(Modifier.height(24.dp))
-        Text("MENU", color = Color.Gray)
-        Spacer(Modifier.height(12.dp))
-
-        // Dashboard
-        DrawerItem(
-            icon = Icons.Default.Dashboard,
-            title = "Dashboard",
-            selected = currentRoute == "dashboard",
-            onClick = { onNavigate("dashboard") }
-        )
-
-        // Products
-        ExpandableDrawerItem(
-            icon = Icons.Default.Inventory2,
-            title = "Products",
-            currentRoute = currentRoute,
-            onNavigate = onNavigate,
-            children = listOf(
-                Triple("All Products", "products", Icons.Default.List),
-                Triple("Barcode PDF", "barcode_pdf", Icons.Default.QrCode),
-                Triple("Export CSV", "export_csv", Icons.Default.TableChart),
-                Triple("Export PDF", "export_pdf", Icons.Default.PictureAsPdf)
-            )
-        )
-
-        // Billing
-        ExpandableDrawerItem(
-            icon = Icons.Default.Receipt,
-            title = "Billing",
-            currentRoute = currentRoute,
-            onNavigate = onNavigate,
-            children = listOf(
-                Triple("Create Bill (POS)", "create_bill", Icons.Default.PointOfSale),
-                Triple("Bill Payments", "bill_payments", Icons.Default.Receipt)
-            )
-        )
-
-        // Orders
-        ExpandableDrawerItem(
-            icon = Icons.Default.ShoppingCart,
-            title = "Orders",
-            badgeCount = 3,
-            currentRoute = currentRoute,
-            onNavigate = onNavigate,
-            children = listOf(
-                Triple("Order Status", "orders", Icons.Default.Info),
-                Triple("Customer Orders", "customer_orders", Icons.Default.People)
-            )
-        )
-
-        // Payment Verification
-        DrawerItem(
-            icon = Icons.Default.VerifiedUser,
-            title = "Payment Verification",
-            selected = currentRoute == "payment_verification",
-            badgeCount = 1,
-            onClick = { onNavigate("payment_verification") }
-        )
-
-        // Reports
-        ExpandableDrawerItem(
-            icon = Icons.Default.BarChart,
-            title = "Reports",
-            currentRoute = currentRoute,
-            onNavigate = onNavigate,
-            children = listOf(
-                Triple("Payment Report", "payment_report", Icons.Default.Payments),
-                Triple("Sales Report", "sales_report", Icons.Default.ShowChart),
-                Triple("Product Sales Report", "product_sales_report", Icons.Default.TrendingUp)
-            )
-        )
-
-        // Wallet
-        DrawerItem(
-            icon = Icons.Default.AccountBalanceWallet,
-            title = "Wallets",
-            selected = currentRoute == "wallets",
-            onClick = { onNavigate("wallets") }
-        )
-
-        Spacer(Modifier.weight(1f))
-        Divider()
-
-        TextButton(
-            onClick = onLogout,
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(
+                    rememberScrollState()
+                )
+                .padding(16.dp)
         ) {
-            Icon(Icons.Default.Logout, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Logout", color = MaterialTheme.colorScheme.error)
+
+            Text(
+                text = "JoyMart",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            Text(
+                "MENU",
+                color = Color.Gray
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Dashboard
+            DrawerItem(
+                icon = Icons.Default.Dashboard,
+                title = "Dashboard",
+                selected = currentRoute == "dashboard",
+                onClick = { onNavigate("dashboard") }
+            )
+
+            DrawerItem(
+                icon = Icons.Default.Person,
+                title = "Profile",
+                selected = currentRoute == "profile",
+                onClick = { onNavigate("profile") }
+            )
+
+            // Products
+            ExpandableDrawerItem(
+                icon = Icons.Default.Inventory2,
+                title = "Products",
+                currentRoute = currentRoute,
+                onNavigate = onNavigate,
+                children = listOf(
+                    Triple("All Products", "products", Icons.Default.List),
+                    Triple("Barcode PDF", "barcode_pdf", Icons.Default.QrCode),
+                    Triple("Export CSV", "export_csv", Icons.Default.TableChart),
+                    Triple("Export PDF", "export_pdf", Icons.Default.PictureAsPdf)
+                )
+            )
+
+            // Billing
+            ExpandableDrawerItem(
+                icon = Icons.Default.Receipt,
+                title = "Billing",
+                currentRoute = currentRoute,
+                onNavigate = onNavigate,
+                children = listOf(
+                    Triple("Create Bill (POS)", "create_bill", Icons.Default.PointOfSale),
+                    Triple("Bill Payments", "bill_payments", Icons.Default.Receipt)
+                )
+            )
+
+            // Orders
+            ExpandableDrawerItem(
+                icon = Icons.Default.ShoppingCart,
+                title = "Orders",
+                badgeCount = 3,
+                currentRoute = currentRoute,
+                onNavigate = onNavigate,
+                children = listOf(
+                    Triple("Order Status", "orders", Icons.Default.Info),
+                    Triple("Customer Orders", "customer_orders", Icons.Default.People)
+                )
+            )
+
+            // Payment Verification
+            DrawerItem(
+                icon = Icons.Default.VerifiedUser,
+                title = "Payment Verification",
+                selected = currentRoute == "payment_verification",
+                badgeCount = 1,
+                onClick = {
+                    onNavigate("payment_verification")
+                }
+            )
+
+            // Reports
+            ExpandableDrawerItem(
+                icon = Icons.Default.BarChart,
+                title = "Reports",
+                currentRoute = currentRoute,
+                onNavigate = onNavigate,
+                children = listOf(
+                    Triple("Payment Report", "payment_report", Icons.Default.Payments),
+                    Triple("Sales Report", "sales_report", Icons.Default.ShowChart),
+                    Triple("Product Sales Report", "product_sales_report", Icons.Default.TrendingUp)
+                )
+            )
+
+            // Wallet
+            DrawerItem(
+                icon = Icons.Default.AccountBalanceWallet,
+                title = "Wallets",
+                selected = currentRoute == "wallets",
+                onClick = { onNavigate("wallets") }
+            )
+
+            Spacer(Modifier.height(20.dp))
+        }
+
+        // ================= FIXED LOGOUT =================
+
+        Column {
+
+            HorizontalDivider()
+
+            TextButton(
+
+                onClick = {
+                    showLogoutDialog = true
+                },
+
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
+            ) {
+
+                Icon(
+                    Icons.Default.Logout,
+                    contentDescription = null
+                )
+
+                Spacer(Modifier.width(8.dp))
+
+                Text(
+                    "Logout",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
-}
+
+    // ================= LOGOUT CONFIRM =================
+
+    if (showLogoutDialog) {
+
+        AlertDialog(
+
+            onDismissRequest = {
+                showLogoutDialog = false
+            },
+
+            icon = {
+
+                Icon(
+                    Icons.Default.Logout,
+                    contentDescription = null,
+                    tint = Color.Red
+                )
+            },
+
+            title = {
+                Text("Logout")
+            },
+
+            text = {
+                Text(
+                    "Are you sure you want to logout?"
+                )
+            },
+
+            confirmButton = {
+
+                Button(
+
+                    onClick = {
+
+                        showLogoutDialog = false
+
+                        onLogout()
+                    },
+
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red
+                    )
+                ) {
+
+                    Text("Logout")
+                }
+            },
+
+            dismissButton = {
+
+                OutlinedButton(
+
+                    onClick = {
+                        showLogoutDialog = false
+                    }
+                ) {
+
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    }
+
 
 
 /* -------------------------------------------------------

@@ -79,6 +79,8 @@ dependencies {
     implementation(libs.androidx.compose.animation.core)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.compose.ui.unit)
+    implementation(libs.play.services.location)
+    implementation(libs.androidx.ui.text)
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.compose.material:material-icons-extended")
 
@@ -97,9 +99,9 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // ROOM
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.7.0")
+    implementation("androidx.room:room-ktx:2.7.0")
+    kapt("androidx.room:room-compiler:2.7.0")
 
     // COROUTINES
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
@@ -118,5 +120,7 @@ dependencies {
 
     implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
-
+    implementation("androidx.room:room-paging:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }

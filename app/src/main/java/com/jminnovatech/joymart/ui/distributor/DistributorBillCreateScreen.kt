@@ -16,10 +16,13 @@ import androidx.compose.ui.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import kotlinx.coroutines.launch
 import com.google.gson.Gson
@@ -58,7 +61,7 @@ data class CartItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DistributorBillCreateScreen(nav:NavController){
+fun DistributorBillCreateScreen(nav: NavController) {
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -66,28 +69,30 @@ fun DistributorBillCreateScreen(nav:NavController){
     var products by remember { mutableStateOf(listOf<ProductItem>()) }
     val cart = remember { mutableStateListOf<CartItem>() }
 
-    var search by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
+    var showProductDialog by remember { mutableStateOf(false) }
 
     var buyerName by remember { mutableStateOf("") }
     var buyerPhone by remember { mutableStateOf("") }
     var buyerAddress by remember { mutableStateOf("") }
 
     var discountValue by remember { mutableStateOf("0") }
+    var discountType by remember { mutableStateOf("amount") }
+// amount or percent
     var gst by remember { mutableStateOf("0") }
     var paid by remember { mutableStateOf("0") }
 
     var loading by remember { mutableStateOf(false) }
+    var showSuccess by remember { mutableStateOf(false) }
+    var createdBillNo by remember { mutableStateOf("") }
+    /* LOAD PRODUCTS */
 
-    /* -------- LOAD PRODUCTS -------- */
+    LaunchedEffect(Unit) {
 
-    LaunchedEffect(Unit){
-
-        try{
+        try {
 
             val res = RetrofitClient.distributorApi.getProducts()
 
-            products = res.data?.data?.map{
+            products = res.data?.data?.map {
 
                 ProductItem(
                     id = it.id,
@@ -101,38 +106,38 @@ fun DistributorBillCreateScreen(nav:NavController){
 
             } ?: emptyList()
 
-        }catch(_:Exception){}
+        } catch (_: Exception) {}
     }
-
-    /* -------- CALCULATIONS -------- */
 
     val subtotal = cart.sumOf { it.price * it.qty }
 
-    val discountAmount = discountValue.toDoubleOrNull() ?: 0.0
+    val discountAmount =
+        if(discountType == "percent")
+            subtotal * (discountValue.toDoubleOrNull() ?: 0.0) / 100
+        else
+            discountValue.toDoubleOrNull() ?: 0.0
 
     val gstAmount =
-        (subtotal-discountAmount) *
+        (subtotal - discountAmount) *
                 (gst.toDoubleOrNull() ?: 0.0) / 100
 
-    val total = subtotal-discountAmount+gstAmount
+    val total = subtotal - discountAmount + gstAmount
 
     val paidAmount = paid.toDoubleOrNull() ?: 0.0
 
-    val due = total-paidAmount
+    val due = total - paidAmount
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
-    ){
-
-        /* -------- HEADER -------- */
+    ) {
 
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
-        ){
+        ) {
 
             Text(
                 "Create Bill",
@@ -140,15 +145,15 @@ fun DistributorBillCreateScreen(nav:NavController){
             )
 
             IconButton(
-                onClick={ nav.navigate("bill_history") }
-            ){
-                Icon(Icons.Default.History,null)
+                onClick = { nav.navigate("bill_history") }
+            ) {
+                Icon(Icons.Default.History, null)
             }
         }
 
         Spacer(Modifier.height(12.dp))
 
-        /* -------- CUSTOMER -------- */
+        /* CUSTOMER */
 
         OutlinedTextField(
             value = buyerName,
@@ -159,11 +164,10 @@ fun DistributorBillCreateScreen(nav:NavController){
 
         OutlinedTextField(
             value = buyerPhone,
-            onValueChange = { newValue ->
+            onValueChange = {
 
-                if(newValue.all { it.isDigit() } && newValue.length <= 10){
-                    buyerPhone = newValue
-                }
+                if (it.all { c -> c.isDigit() } && it.length <= 10)
+                    buyerPhone = it
             },
             label = { Text("Phone") },
             keyboardOptions = KeyboardOptions(
@@ -179,146 +183,55 @@ fun DistributorBillCreateScreen(nav:NavController){
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
 
-        /* -------- PRODUCT SEARCH -------- */
+        /* CHOOSE PRODUCT */
 
-        OutlinedTextField(
-            value = search,
-            onValueChange = {
-                search = it
-                expanded = true
-            },
-            label = { Text("Search Product") },
+
+
+        Button(
+            onClick = { showProductDialog = true },
             modifier = Modifier.fillMaxWidth()
-        )
-
-        Card(
-            elevation = CardDefaults.cardElevation(6.dp),
-            modifier = Modifier.fillMaxWidth()
-        ){
-
-            DropdownMenu(
-                expanded = expanded && search.isNotEmpty(),
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.fillMaxWidth()
-            ){
-
-                products
-                    .filter { it.title.contains(search,true) }
-                    .take(8)
-                    .forEach{p->
-
-                        DropdownMenuItem(
-                            text = {
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ){
-
-                                    Column {
-
-                                        Text(
-                                            p.title,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-
-                                        Text(
-                                            "Stock ${p.stock} ${p.unit}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color.Gray
-                                        )
-                                    }
-
-                                    Column {
-
-                                        Text(
-                                            "₹${p.price}",
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-
-                                        Text(
-                                            "${p.discountPercent}% off",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color(0xFF2E7D32)
-                                        )
-                                    }
-                                }
-
-                            },
-                            onClick={
-
-                                expanded=false
-                                search=""
-
-                                if(p.stock<=0){
-
-                                    Toast.makeText(
-                                        context,
-                                        "Out of stock",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-
-                                    return@DropdownMenuItem
-                                }
-
-                                if(cart.any{it.id==p.id}){
-
-                                    Toast.makeText(
-                                        context,
-                                        "Already added",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-
-                                    return@DropdownMenuItem
-                                }
-
-                                cart.add(
-                                    CartItem(
-                                        p.id,p.title,p.price,p.mrp,
-                                        p.unit,p.discountPercent,p.stock,1.0
-                                    )
-                                )
-                            }
-                        )
-                    }
-            }
+        ) {
+            Text(
+                if(cart.isEmpty()) "Choose Products"
+                else "Modify Products"
+            )
         }
 
         Spacer(Modifier.height(12.dp))
 
-        /* -------- CART TABLE -------- */
+        /* CART TABLE */
 
         val scroll = rememberScrollState()
 
         Column(
             modifier = Modifier
                 .horizontalScroll(scroll)
-                .border(1.dp,Color.LightGray)
-        ){
+                .border(1.dp, Color.LightGray)
+        ) {
 
             Row(
                 modifier = Modifier.background(Color(0xFF1976D2))
-            ){
+            ) {
 
-                HeaderCell("Product",160.dp,Color.White)
-                HeaderCell("Qty",80.dp,Color.White)
-                HeaderCell("MRP",80.dp,Color.White)
-                HeaderCell("Sell",80.dp,Color.White)
-                HeaderCell("Disc%",80.dp,Color.White)
-                HeaderCell("Total",100.dp,Color.White)
-                HeaderCell("Action",70.dp,Color.White)
+                HeaderCell("Product", 160.dp, Color.White)
+                HeaderCell("Qty", 80.dp, Color.White)
+                HeaderCell("MRP", 80.dp, Color.White)
+                HeaderCell("Sell", 80.dp, Color.White)
+                HeaderCell("Disc%", 80.dp, Color.White)
+                HeaderCell("Total", 100.dp, Color.White)
+                HeaderCell("Action", 70.dp, Color.White)
             }
 
-            cart.forEachIndexed{index,item->
+            cart.forEachIndexed { index, item ->
 
                 Row(
                     modifier = Modifier.padding(6.dp),
                     verticalAlignment = Alignment.CenterVertically
-                ){
+                ) {
 
-                    Column(modifier = Modifier.width(160.dp)){
+                    Column(modifier = Modifier.width(160.dp)) {
 
                         Text(item.title)
 
@@ -329,70 +242,22 @@ fun DistributorBillCreateScreen(nav:NavController){
                         )
                     }
 
-                    var qtyText by remember(item.qty) {
-                        mutableStateOf(format2(item.qty))
-                    }
-
-                    OutlinedTextField(
-                        value = qtyText,
-                        onValueChange = { newValue ->
-
-                            if(newValue.count { it == '.' } > 1) return@OutlinedTextField
-
-                            val q = newValue.toDoubleOrNull()
-
-                            if(q == null){
-
-                                qtyText = ""
-
-                            }
-                            else if(q > item.stock){
-
-                                Toast.makeText(
-                                    context,
-                                    "Stock only ${item.stock}",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-
-                                qtyText = format2(item.stock)
-
-                                cart[index] = item.copy(qty = item.stock)
-
-                            }
-                            else{
-
-                                qtyText = newValue
-                                cart[index] = item.copy(qty = q)
-                            }
-                        },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Decimal
-                        ),
-                        singleLine = true,
-                        modifier = Modifier.width(80.dp)
-                    )
-
-                    TableCell("₹${format2(item.mrp)}",80.dp)
-                    TableCell("₹${format2(item.price)}",80.dp)
-                    TableCell("${format2(item.discountPercent)}%",80.dp)
-
-                    TableCell(
-                        "₹${format2(item.price*item.qty)}",
-                        100.dp
-                    )
+                    TableCell(format2(item.qty), 80.dp)
+                    TableCell("₹${format2(item.mrp)}", 80.dp)
+                    TableCell("₹${format2(item.price)}", 80.dp)
+                    TableCell("${format2(item.discountPercent)}%", 80.dp)
+                    TableCell("₹${format2(item.price * item.qty)}", 100.dp)
 
                     IconButton(
                         onClick = { cart.removeAt(index) }
-                    ){
-                        Icon(Icons.Default.Delete,null,tint=Color.Red)
+                    ) {
+                        Icon(Icons.Default.Delete, null, tint = Color.Red)
                     }
                 }
 
                 Divider()
             }
         }
-        Spacer(Modifier.height(16.dp))
-
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ){
@@ -400,12 +265,37 @@ fun DistributorBillCreateScreen(nav:NavController){
             OutlinedTextField(
                 value = discountValue,
                 onValueChange = { discountValue = it },
-                label = { Text("Discount Amount") },
+                label = {
+                    Text(
+                        if(discountType == "amount")
+                            "Discount ₹"
+                        else
+                            "Discount %"
+                    )
+                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal
                 ),
                 modifier = Modifier.weight(1f)
             )
+
+            Button(
+                onClick = {
+
+                    discountType =
+                        if(discountType == "amount")
+                            "percent"
+                        else
+                            "amount"
+                }
+            ){
+                Text(
+                    if(discountType == "amount")
+                        "%"
+                    else
+                        "₹"
+                )
+            }
 
             OutlinedTextField(
                 value = gst,
@@ -417,16 +307,14 @@ fun DistributorBillCreateScreen(nav:NavController){
                 modifier = Modifier.weight(1f)
             )
         }
-        Spacer(Modifier.height(10.dp))
-
-        /* -------- TOTAL -------- */
-
         Spacer(Modifier.height(16.dp))
 
+        /* TOTAL CARD */
+
         Card(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color(0xFFF5F7FA)
+                containerColor = Color(0xFFF3F6FF)
             )
         ){
 
@@ -434,33 +322,38 @@ fun DistributorBillCreateScreen(nav:NavController){
                 modifier = Modifier.padding(16.dp)
             ){
 
-                SummaryRow("Subtotal",subtotal)
+                SummaryRow("Subtotal", subtotal)
 
-                SummaryRow("Discount",discountAmount)
+                SummaryRow(
+                    if(discountType=="percent")
+                        "Discount (${discountValue}%)"
+                    else
+                        "Discount",
+                    discountAmount
+                )
 
-                SummaryRow("GST",gstAmount)
+                SummaryRow("GST", gstAmount)
 
                 Divider()
 
                 SummaryRow(
                     "Total",
                     total,
-                    isTotal = true
+                    true
                 )
             }
         }
 
-        /* -------- PAYMENT -------- */
+        Spacer(Modifier.height(16.dp))
 
         OutlinedTextField(
             value = paid,
-            onValueChange = { v ->
+            onValueChange = {
 
-                val p = v.toDoubleOrNull()
+                val p = it.toDoubleOrNull()
 
-                if(p != null && p <= total){
-                    paid = v
-                }
+                if (p != null && p <= total)
+                    paid = it
             },
             label = { Text("Paid Amount") },
             keyboardOptions = KeyboardOptions(
@@ -475,9 +368,14 @@ fun DistributorBillCreateScreen(nav:NavController){
         Button(
             onClick = {
 
-                scope.launch{
+                scope.launch {
 
-                    if(buyerPhone.length != 10){
+                    if (buyerName.isBlank()) {
+                        Toast.makeText(context, "Enter customer name", Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+
+                    if (buyerPhone.length != 10) {
 
                         Toast.makeText(
                             context,
@@ -488,7 +386,7 @@ fun DistributorBillCreateScreen(nav:NavController){
                         return@launch
                     }
 
-                    if(cart.isEmpty()){
+                    if (cart.isEmpty()) {
 
                         Toast.makeText(
                             context,
@@ -501,9 +399,9 @@ fun DistributorBillCreateScreen(nav:NavController){
 
                     loading = true
 
-                    try{
+                    try {
 
-                        val items = cart.map{
+                        val items = cart.map {
 
                             mapOf(
                                 "id" to it.id,
@@ -517,38 +415,143 @@ fun DistributorBillCreateScreen(nav:NavController){
                         val res =
                             RetrofitClient.distributorApi.createSale(
                                 buyerName,
+                                buyerPhone,
+                                buyerAddress,
                                 discountAmount,
                                 gstAmount,
                                 paidAmount,
                                 json
                             )
 
+
+
                         val billNo = res.data.bill_no
 
-                        val intent = Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://jminnovatech.xyz/enjoybazar/invoice/$billNo")
-                        )
+                        createdBillNo = billNo
 
-                        context.startActivity(intent)
+// ✅ CLEAR ALL FORM
+                        buyerName = ""
+                        buyerPhone = ""
+                        buyerAddress = ""
 
-                    }catch(_:Exception){}
+                        discountValue = "0"
+                        gst = "0"
+                        paid = "0"
+
+                        cart.clear()
+
+// ✅ SHOW SUCCESS UI
+                        showSuccess = true
+
+
+                    } catch (_: Exception) {}
 
                     loading = false
                 }
 
             },
             modifier = Modifier.fillMaxWidth()
-        ){
+        ) {
 
-            if(loading)
+            if (loading)
                 CircularProgressIndicator()
             else
                 Text("Save Bill")
         }
     }
 
+    if(showProductDialog){
 
+        ProductSelectDialog(
+            products = products,
+            existingCart = cart,
+            onClose = { showProductDialog = false },
+            onConfirm = { selected ->
+
+                cart.clear()
+                cart.addAll(selected)
+
+            }
+        )
+    }
+    if (showSuccess) {
+
+        Dialog(
+            onDismissRequest = {
+                showSuccess = false
+            }
+        ) {
+
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                )
+            ) {
+
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    Text(
+                        "✅",
+                        style = MaterialTheme.typography.displayLarge
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Text(
+                        "Bill Created Successfully",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        createdBillNo,
+                        color = Color.Gray
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+
+                    Button(
+                        onClick = {
+
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse(
+                                    "https://jminnovatech.xyz/enjoybazar/invoice/$createdBillNo"
+                                )
+                            )
+
+                            context.startActivity(intent)
+
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text("View Bill")
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            showSuccess = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text("Create Another Bill")
+                    }
+                }
+            }
+        }
+    }
 }
 
 /* -------- HISTORY -------- */
@@ -644,5 +647,442 @@ fun SummaryRow(
             else
                 MaterialTheme.typography.bodyMedium
         )
+    }
+}
+
+@Composable
+fun ProductSelectDialog(
+    products: List<ProductItem>,
+    existingCart: List<CartItem>,
+    onConfirm: (List<CartItem>) -> Unit,
+    onClose: () -> Unit
+) {
+
+    val context = LocalContext.current
+
+    var search by remember { mutableStateOf("") }
+
+    val selected =
+        remember {
+            mutableStateListOf<CartItem>().apply {
+                addAll(existingCart)
+            }
+        }
+
+    val filtered =
+        if (search.isBlank()) products
+        else products.filter { it.title.contains(search, true) }
+
+    Dialog(onDismissRequest = onClose) {
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(),
+            shape = RoundedCornerShape(22.dp),
+            color = Color(0xFFF4F6FF)
+        ) {
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+
+                /* HEADER */
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement =
+                        Arrangement.SpaceBetween
+                ) {
+
+                    Text(
+                        "Select Products",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Text(
+                        "✕",
+                        modifier = Modifier.clickable { onClose() },
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                /* SEARCH */
+
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    placeholder = { Text("Search Product") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp)
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                /* PRODUCT LIST */
+
+                Text(
+                    "Available Products",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+
+                    items(filtered) { p ->
+
+                        val outOfStock = p.stock <= 0
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(
+                                    if (outOfStock)
+                                        Color(0xFFFFEBEE)
+                                    else
+                                        Color.White
+                                )
+                                .border(
+                                    1.dp,
+                                    Color(0xFFE3E8F0),
+                                    RoundedCornerShape(18.dp)
+                                )
+                                .clickable(enabled = !outOfStock) {
+
+                                    if (selected.none { it.id == p.id }) {
+
+                                        selected.add(
+                                            0,
+                                            CartItem(
+                                                p.id,
+                                                p.title,
+                                                p.price,
+                                                p.mrp,
+                                                p.unit,
+                                                p.discountPercent,
+                                                p.stock,
+                                                1.0
+                                            )
+                                        )
+                                    }
+                                }
+                                .padding(
+                                    horizontal = 14.dp,
+                                    vertical = 12.dp
+                                ),
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+
+                                Text(
+                                    p.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Spacer(Modifier.height(4.dp))
+
+                                Text(
+                                    if (outOfStock)
+                                        "Out of Stock"
+                                    else
+                                        "Stock ${p.stock} ${p.unit}",
+                                    color =
+                                        if (outOfStock)
+                                            Color.Red
+                                        else
+                                            Color(0xFF2E7D32),
+                                    style =
+                                        MaterialTheme.typography.labelMedium
+                                )
+
+                                Spacer(Modifier.height(4.dp))
+
+                                Row {
+
+                                    Text(
+                                        "MRP ₹${p.mrp}",
+                                        style =
+                                            MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray
+                                    )
+
+                                    Spacer(Modifier.width(8.dp))
+
+                                    if (p.discountPercent > 0) {
+
+                                        Text(
+                                            "${format2(p.discountPercent)}% OFF",
+                                            color = Color(0xFF1B5E20),
+                                            style =
+                                                MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.width(12.dp))
+
+                            Text(
+                                "₹${p.price}",
+                                color =
+                                    if (outOfStock)
+                                        Color.Gray
+                                    else
+                                        Color(0xFF2962FF),
+                                style =
+                                    MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                /* SELECTED PRODUCTS */
+
+                Text(
+                    "Selected Products",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+
+                    items(selected) { item ->
+
+                        var qty by remember {
+                            mutableStateOf(item.qty)
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color.White)
+                                .border(
+                                    1.dp,
+                                    Color(0xFFE3E8F0),
+                                    RoundedCornerShape(18.dp)
+                                )
+                                .padding(
+                                    horizontal = 14.dp,
+                                    vertical = 12.dp
+                                ),
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween,
+                            verticalAlignment =
+                                Alignment.CenterVertically
+                        ) {
+
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+
+                                Text(
+                                    item.title,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Spacer(Modifier.height(4.dp))
+
+                                Text(
+                                    "Stock ${item.stock} ${item.unit}",
+                                    color = Color.Gray,
+                                    style =
+                                        MaterialTheme.typography.labelSmall
+                                )
+                            }
+
+                            /* QTY CONTROLLER */
+
+                            Row(
+                                verticalAlignment =
+                                    Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .border(
+                                        2.dp,
+                                        Color(0xFF4A90E2),
+                                        RoundedCornerShape(12.dp)
+                                    )
+                            ) {
+
+                                Box(
+                                    modifier = Modifier
+                                        .background(Color(0xFFE3F2FD))
+                                        .clickable {
+
+                                            val step =
+                                                if (item.unit.lowercase()
+                                                    in listOf("kg", "ltr", "gram"))
+                                                    0.100
+                                                else
+                                                    1.0
+
+                                            val newQty = qty - step
+
+                                            if (newQty <= 0) {
+
+                                                selected.remove(item)
+
+                                            } else {
+
+                                                qty = newQty
+
+                                                val index =
+                                                    selected.indexOf(item)
+
+                                                selected[index] =
+                                                    selected[index].copy(qty = newQty)
+                                            }
+                                        }
+                                        .padding(14.dp)
+                                ) {
+                                    Text(
+                                        "-",
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                OutlinedTextField(
+                                    value = format2(qty),
+                                    onValueChange = {
+
+                                        val v =
+                                            it.toDoubleOrNull()
+
+                                        if (v != null) {
+
+                                            if (v > item.stock) {
+
+                                                Toast
+                                                    .makeText(
+                                                        context,
+                                                        "Stock only ${item.stock}",
+                                                        Toast.LENGTH_SHORT
+                                                    )
+                                                    .show()
+
+                                            } else {
+
+                                                qty = v
+
+                                                val index =
+                                                    selected.indexOf(item)
+
+                                                selected[index] =
+                                                    selected[index].copy(qty = v)
+                                            }
+                                        }
+                                    },
+                                    keyboardOptions =
+                                        KeyboardOptions(
+                                            keyboardType =
+                                                KeyboardType.Decimal
+                                        ),
+                                    singleLine = true,
+                                    modifier =
+                                        Modifier.width(80.dp)
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .background(Color(0xFFE3F2FD))
+                                        .clickable {
+
+                                            val step =
+                                                if (item.unit.lowercase()
+                                                    in listOf("kg", "ltr", "gram"))
+                                                    0.100
+                                                else
+                                                    1.0
+
+                                            val newQty = qty + step
+
+                                            if (newQty > item.stock) {
+
+                                                Toast
+                                                    .makeText(
+                                                        context,
+                                                        "Stock only ${item.stock}",
+                                                        Toast.LENGTH_SHORT
+                                                    )
+                                                    .show()
+
+                                            } else {
+
+                                                qty = newQty
+
+                                                val index =
+                                                    selected.indexOf(item)
+
+                                                selected[index] =
+                                                    selected[index].copy(qty = newQty)
+                                            }
+                                        }
+                                        .padding(14.dp)
+                                ) {
+                                    Text(
+                                        "+",
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+
+                        onConfirm(selected)
+                        onClose()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(58.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2962FF)
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 8.dp
+                    )
+                ) {
+
+                    Text(
+                        "Update Products",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White
+                    )
+                }
+            }
+        }
     }
 }

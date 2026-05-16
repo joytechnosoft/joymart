@@ -12,7 +12,9 @@
                                 import androidx.navigation.compose.*
                                 import com.jminnovatech.joymart.core.session.SessionManager
                                 import com.jminnovatech.joymart.ui.distributor.modal.ProductModal
+                                import com.jminnovatech.joymart.ui.distributor.orders.DistributorOrdersScreen
                                 import com.jminnovatech.joymart.ui.distributor.sales.DistributorBillCreateScreen
+                                import com.jminnovatech.joymart.ui.distributor.sales.OfflineDistributorBillCreateScreen
                                 import kotlinx.coroutines.launch
 
                                 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,11 +115,15 @@
                                                 composable("create_bill") {
                                                     DistributorBillCreateScreen(navController)
                                                 }
+                                                composable("offline_create_bill") {
+                                                    OfflineDistributorBillCreateScreen(navController)
+                                                }
                                                 composable("bill_payments") {
                                                     DistributorBillPaymentScreen()
                                                 }
-                                                composable("orders") {
-                                                    DistributorOrdersScreen()
+                                                composable("customer_orders") {
+
+                                                    DistributorOrdersScreen(navController)
                                                 }
                                                 composable("payment_verification") {
 

@@ -207,7 +207,56 @@ fun DistributorDashboardScreen(navController: NavHostController) {
 
                     }
                 }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
 
+
+                        MenuCard(
+                            title = "Offline Bill",
+                            icon = Icons.Default.PointOfSale,
+                            color = Color(0xFF2E7D32),
+                            onClick = {navController.navigate("offline_create_bill") }
+                        )
+
+                        MenuCard(
+                            title = "Payments",
+                            icon = Icons.Default.Payments,
+                            color = Color(0xFFEF6C00),
+                            onClick = { }
+                        )
+
+                        MenuCard(
+                            title = "Orders",
+                            icon = Icons.Default.ShoppingBag,
+                            color = Color(0xFF8E24AA),
+                            onClick = { }
+                        )
+
+                        MenuCard(
+                            title = "Verify",
+                            icon = Icons.Default.VerifiedUser,
+                            color = Color(0xFFD32F2F),
+                            onClick = {
+                                navController.navigate(
+                                    "payment_verification"
+                                )
+                            }
+                        )
+
+                        MenuCard(
+                            title = "Reports",
+                            icon = Icons.Default.BarChart,
+                            color = Color(0xFF455A64),
+                            onClick = { }
+                        )
+
+                    }
+                }
                 // -------- Your Existing Dashboard Grid (unchanged) --------
                 item {
 
